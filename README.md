@@ -22,9 +22,9 @@ The last two commands activate the virtualenv so that running python or pip on
 the shell will run the virtualenv pypy, and upgrade the installed pip to the
 latest version.
 
-You can now either install `ap-loadtester` as a [program](#Program Use) to run
+You can now either install `ap-loadtester` as a [program](#program-use) to run
 test scenarios you create, or if adding scenarios/code to `ap-loadtester`
-continue to [Developing](#Developing).
+continue to [Developing](#developing).
 
 ## Program Use
 
