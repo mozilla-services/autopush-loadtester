@@ -11,5 +11,9 @@ setup(
     author_email='bbangert@mozilla.com',
     license='MPL2',
     packages=['aplt'],
-    zip_safe=False
+    zip_safe=False,
+    entry_points="""
+    [console_scripts]
+    aplt_scenario = aplt.runner:run_scenario
+    """
 )

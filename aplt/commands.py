@@ -16,29 +16,27 @@ class disconnect(namedtuple("Disconnect", "")):
 
 
 class hello(namedtuple("Hello", "uaid")):
-    def __init__(self, uaid=None):
-        self.uaid = uaid
+    pass
 
 
 class register(namedtuple("Register", "channel_id")):
-    def __init__(self, channel_id=None):
-        self.channel_id = channel_id or random_channel_id()
+    pass
 
 
 class unregister(namedtuple("UnRegister", "channel_id")):
-    def __init__(self, channel_id=None):
-        self.channel_id = channel_id
-
-
-class send_notification(namedtuple("SendNotification", "channel_id data")):
     pass
 
 
-class expect_notification(namedtuple("ExpectNotification", "channel_id")):
+class send_notification(namedtuple("SendNotification",
+                                   "endpoint_url data ttl")):
     pass
 
 
-class ack(namedtuple("Ack", "message_id")):
+class expect_notification(namedtuple("ExpectNotification", "channel_id time")):
+    pass
+
+
+class ack(namedtuple("Ack", "channel_id version")):
     pass
 
 

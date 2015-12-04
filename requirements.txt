@@ -1,14 +1,21 @@
+-e git+git@github.com:mozilla-services/ap-loadtester.git@770ee5e9fc8a74e0312349d465ee944f42876e69#egg=aplt-feature_bug-1
 autobahn==0.10.9
 cffi==1.3.1
+characteristic==14.3.0
 cryptography==1.1.1
+docopt==0.6.2
 enum34==1.1.1
 greenlet==0.4.9
 idna==2.0
 ipaddress==1.0.15
 pyasn1==0.1.9
+pyasn1-modules==0.0.8
 pyOpenSSL==0.15.1
 readline==6.2.4.1
+requests==2.8.1
+service-identity==14.0.0
 six==1.10.0
+treq==15.0.0
 Twisted==15.5.0
 txaio==2.1.0
 zope.interface==4.1.3
