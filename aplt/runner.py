@@ -127,7 +127,7 @@ def run_scenario():
     """Run a scenario
 
     Usage:
-        aplt_scenario <scenario_function>
+        aplt_scenario <websocket_url> <scenario_function>
 
     """
     arguments = docopt(run_scenario.__doc__, version=__version__)
@@ -138,6 +138,6 @@ def run_scenario():
     module = importlib.import_module(mod)
     scenario = getattr(module, func_name)
     log.startLogging(sys.stdout)
-    h = RunnerHarness("ws://localhost:8080/")
+    h = RunnerHarness(arguments["<websocket_url>"])
     h.register_scenario("basic", scenario)
     h.run()
