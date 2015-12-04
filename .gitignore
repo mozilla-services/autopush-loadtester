@@ -1,5 +1,6 @@
 *.pyc
 *.swp
+*.egg-info
 apenv
 pypy*
 dist/*
