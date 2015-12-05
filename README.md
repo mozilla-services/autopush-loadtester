@@ -40,8 +40,7 @@ Run the basic scenario against the dev server:
 
 ## Developing
 
-Checkout the code from this git repo and install the dependencies
-Now install the requirements for `ap-loadtester`, and run the package setup for
-the command line script to be ready:
+Checkout the code from this repository and run the package setup after the
+virtualenv is active:
 
     $ python setup.py --develop
