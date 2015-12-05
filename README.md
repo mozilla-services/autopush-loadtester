@@ -1,3 +1,5 @@
+[![codecov.io](https://codecov.io/github/mozilla-services/ap-loadtester/coverage.svg?branch=master)](https://codecov.io/github/mozilla-services/ap-loadtester?branch=master) [![Build Status](https://travis-ci.org/mozilla-services/ap-loadtester.svg?branch=feature%2Fbug-1)](https://travis-ci.org/mozilla-services/ap-loadtester)
+
 # Autopush Load-Tester
 
 The Autopush Load-Tester is an integrated tester and load-tester for the Mozilla
