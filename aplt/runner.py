@@ -9,7 +9,7 @@ from autobahn.twisted.websocket import (
     WebSocketClientFactory
 )
 from docopt import docopt
-from twisted.internet import reactor, ssl
+from twisted.internet import reactor, ssl, task
 from twisted.python import log
 
 from aplt import __version__
@@ -20,9 +20,6 @@ from aplt.client import (
 
 
 class RunnerHarness(object):
-    # For testing purposes
-    reactor = reactor
-
     def __init__(self, websocket_url):
         self._factory = WebSocketClientFactory(
             websocket_url,
@@ -56,7 +53,6 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
             processor = CommandProcessor(scenario, self)
             processor.run()
             self._processors[processor] = True
-        self.reactor.run()
 
     def connect(self, processor):
         """Start a connection for a processor and queue it for when the
@@ -122,11 +118,15 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
     def remove_processor(self, processor):
         """Remove a completed processor"""
         self._processors.pop(processor, None)
-        if not self._processors:
-            self.reactor.stop()
 
 
-def run_scenario(args=None):
+def check_processors(harness):
+    """Task to shut down the reactor if there are no processors running"""
+    if not harness._processors:
+        reactor.stop()
+
+
+def run_scenario(args=None, run=True):
     """Run a scenario
 
     Usage:
@@ -144,3 +144,10 @@ def run_scenario(args=None):
     h = RunnerHarness(arguments["<websocket_url>"])
     h.register_scenario("basic", scenario)
     h.run()
+
+    if run:
+        l = task.LoopingCall(check_processors, h)
+        l.start(1.0)
+        reactor.run()
+    else:
+        return h
