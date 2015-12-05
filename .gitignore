@@ -5,3 +5,5 @@ apenv
 pypy*
 dist/*
 .tox/
+coverage.xml
+.coverage
