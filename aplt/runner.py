@@ -20,6 +20,9 @@ from aplt.client import (
 
 
 class RunnerHarness(object):
+    # For testing purposes
+    reactor = reactor
+
     def __init__(self, websocket_url):
         self._factory = WebSocketClientFactory(
             websocket_url,
@@ -53,7 +56,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
             processor = CommandProcessor(scenario, self)
             processor.run()
             self._processors[processor] = True
-        reactor.run()
+        self.reactor.run()
 
     def connect(self, processor):
         """Start a connection for a processor and queue it for when the
@@ -120,17 +123,17 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         """Remove a completed processor"""
         self._processors.pop(processor, None)
         if not self._processors:
-            reactor.stop()
+            self.reactor.stop()
 
 
-def run_scenario():
+def run_scenario(args=None):
     """Run a scenario
 
     Usage:
         aplt_scenario <websocket_url> <scenario_function>
 
     """
-    arguments = docopt(run_scenario.__doc__, version=__version__)
+    arguments = args or docopt(run_scenario.__doc__, version=__version__)
     arg = arguments["<scenario_function>"]
     if ":" not in arg:
         raise Exception("Missing function designation")
