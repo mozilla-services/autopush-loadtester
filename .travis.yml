@@ -1,8 +1,13 @@
 language: python
 sudo: false
 python:
-  - "2.7"
+  - "pypy"
 install:
+  - wget https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.1-linux64.tar.bz2
+  - tar xjvf pypy-4.0.1-linux64.tar.bz2
+  - virtualenv -p pypy-4.0.1-linux64/bin/pypy apenv
+  - source apenv/bin/activate
+  - pip install --upgrade pip
   - pip install tox
 script: tox -- --with-coverage --cover-xml --cover-package=aplt
 after_success:
