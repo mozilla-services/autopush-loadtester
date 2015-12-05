@@ -4,3 +4,4 @@
 apenv
 pypy*
 dist/*
+.tox/
