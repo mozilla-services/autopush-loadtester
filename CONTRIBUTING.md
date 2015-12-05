@@ -28,7 +28,7 @@ When submitting a PR:
   ([MPL 2.0](/LICENSE)).
 - Base your branch off the current `master` (see below for an example workflow).
 - Add both your code and new tests if relevant.
-- Run `grunt lint` and `npm test` to make sure your code passes linting and tests.
+- Run the test suite to make sure your code passes linting and tests.
 - Please do not include merge commits in pull requests; include only commits with the new relevant code.
 
 See the main [README.md](/README.md) for information on prerequisites, installing, running and testing.
