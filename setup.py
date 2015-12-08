@@ -19,6 +19,7 @@ setup(
         "service-identity>=14.0.0",
         "treq>=15.0.0",
         "pyOpenSSL>=0.15.1",
+        "txaio==2.1.0",
     ],
     entry_points="""
     [console_scripts]
