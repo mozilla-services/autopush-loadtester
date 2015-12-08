@@ -71,8 +71,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
                     "Content-Type": "application/octet-stream",
                     "Content-Encoding": "aesgcm-128",
                     "Encryption": self._crypto_key,
-                    "Encryption-Key":
-                        'keyid="a1"; key="JcqK-OLkJZlJ3sJJWstJCA"',
+                    "Encryption-Key": "Invalid-Key-Used-Here",
                 },
                 allow_redirects=False)
         else:
