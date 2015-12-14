@@ -15,8 +15,18 @@ You will also need virtualenv installed on your system to setup a virtualenv for
 `ap-loadtester`. Assuming you have virtualenv and have downloaded pypy, you
 could then setup the loadtester for use with the following commands:
 
+**Linux:** 
+
     $ tar xjvf pypy-4.0.1-linux64.tar.bz2
     $ virtualenv -p pypy-4.0.1-linux64/bin/pypy apenv
+
+**OSX:** 
+
+    $ tar xjvf pypy-4.0.1-osx64.tar.bz2
+    $ virtualenv -p pypy-4.0.1-osx64/bin/pypy apenv
+
+**Activate Virtualenv:**
+
     $ source apenv/bin/activate
     $ pip install --upgrade pip
 
@@ -27,6 +37,7 @@ latest version.
 You can now either install `ap-loadtester` as a [program](#program-use) to run
 test scenarios you create, or if adding scenarios/code to `ap-loadtester`
 continue to [Developing](#developing).
+
 
 ## Program Use
 
@@ -43,4 +54,34 @@ Run the basic scenario against the dev server:
 Checkout the code from this repository and run the package setup after the
 virtualenv is active:
 
-    $ python setup.py --develop
+    $ python setup.py develop
+
+## Notes on Installation 
+
+**'openssl/aes.h' file not found**
+
+If you get the following error: 
+
+    $ fatal error: 'openssl/aes.h' file not found
+
+Linux: You'll need to install OpenSSL:
+
+    $ sudo apt-get install libssl-dev 
+
+OSX: Apple has deprecated OpenSSL in favor of its own TLS and crypto libraries.
+If you get this error on OSX (El Capitan), install OpenSSL with brew, then 
+link brew libraries and install cryptography:
+
+    $ brew install openssl
+    $ env LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include" pip install cryptography
+
+
+**missing required distribution pyasn1**
+
+If you get the following error:
+
+    $ error: Could not find required distribution pyasn1
+
+re-run:
+
+    $ python setup.py develop
