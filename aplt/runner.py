@@ -20,7 +20,8 @@ from aplt.client import (
 
 
 class RunnerHarness(object):
-    def __init__(self, websocket_url):
+    """Runs multiple instances of a single scenario"""
+    def __init__(self, websocket_url, scenario):
         self._factory = WebSocketClientFactory(
             websocket_url,
             headers={"Origin": "localhost:9000"},
@@ -37,22 +38,17 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
 """
 
         # Processor and Websocket client vars
-        self._scenarios = {}
-        self._processors = {}
+        self._scenario = scenario
+        self._processors = 0
         self._ws_clients = {}
         self._connect_waiters = deque()
 
-    def register_scenario(self, name, scenario):
-        """Register a scenario to run"""
-        self._scenarios[name] = scenario
-
     def run(self):
-        """Start all registered scenarios and the twisted event loop"""
-        for scenario in self._scenarios.values():
-            # Create the processor and start it
-            processor = CommandProcessor(scenario, self)
-            processor.run()
-            self._processors[processor] = True
+        """Start registered scenario"""
+        # Create the processor and start it
+        processor = CommandProcessor(self._scenario, self)
+        processor.run()
+        self._processors += 1
 
     def connect(self, processor):
         """Start a connection for a processor and queue it for when the
@@ -114,9 +110,33 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
                 connectWS(self._factory, contextFactory=self._factory_context)
             return
 
-    def remove_processor(self, processor):
+    def remove_processor(self):
         """Remove a completed processor"""
-        self._processors.pop(processor, None)
+        self._processors -= 1
+
+
+class LoadRunner(object):
+        """Runs a bunch of scenarios for a load-test"""
+        def __init__(self, scenario_list):
+            """Initializes a LoadRunner
+
+            Takes a list of tuples indicating scenario to run, quantity,
+            stagger delay, and overall delay.
+
+            Stagger delay is a number indicating how many of the scenario to
+            launch per second.
+
+            Overall delay is how many seconds after the start of the load-run
+            before the scenario should begin.
+
+            Example::
+
+                lr = LoadRunner([
+                    (basic, 1000, 100, 0),
+                ])
+
+            """
+            self._harnesses = {}
 
 
 def check_processors(harness):
@@ -140,8 +160,7 @@ def run_scenario(args=None, run=True):
     module = importlib.import_module(mod)
     scenario = getattr(module, func_name)
     log.startLogging(sys.stdout)
-    h = RunnerHarness(arguments["<websocket_url>"])
-    h.register_scenario("basic", scenario)
+    h = RunnerHarness(arguments["<websocket_url>"], scenario)
     h.run()
 
     if run:
