@@ -24,5 +24,6 @@ setup(
     entry_points="""
     [console_scripts]
     aplt_scenario = aplt.runner:run_scenario
+    aplt_testplan = aplt.runner:run_testplan
     """
 )

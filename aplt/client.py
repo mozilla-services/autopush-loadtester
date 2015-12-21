@@ -42,9 +42,9 @@ class CommandProcessor(object, policies.TimeoutMixin):
     valid_handlers = ["connect", "disconnect", "error", "hello",
                       "notification", "register", "unregister"]
 
-    def __init__(self, scenario, harness):
+    def __init__(self, scenario, scenario_args, harness):
         self._harness = harness
-        self._scenario = scenario()
+        self._scenario = scenario(*scenario_args)
 
         # Command processing
         self._last_command = None

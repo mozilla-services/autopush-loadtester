@@ -20,8 +20,13 @@ from aplt.client import (
 
 
 class RunnerHarness(object):
-    """Runs multiple instances of a single scenario"""
-    def __init__(self, websocket_url, scenario):
+    """Runs multiple instances of a single scenario
+
+    Running an instance of the scenario is triggered with :meth:`run`. It
+    will run to completion or possibly forever.
+
+    """
+    def __init__(self, websocket_url, scenario, *scenario_args):
         self._factory = WebSocketClientFactory(
             websocket_url,
             headers={"Origin": "localhost:9000"},
@@ -39,6 +44,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
 
         # Processor and Websocket client vars
         self._scenario = scenario
+        self._scenario_args = scenario_args
         self._processors = 0
         self._ws_clients = {}
         self._connect_waiters = deque()
@@ -46,7 +52,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
     def run(self):
         """Start registered scenario"""
         # Create the processor and start it
-        processor = CommandProcessor(self._scenario, self)
+        processor = CommandProcessor(self._scenario, self._scenario_args, self)
         processor.run()
         self._processors += 1
 
@@ -132,17 +138,95 @@ class LoadRunner(object):
             Example::
 
                 lr = LoadRunner([
-                    (basic, 1000, 100, 0),
+                    (basic, 1000, 100, 0, *scenario_args),
                 ])
 
+            .. note::
+
+                Any leftover quantity not cleanly divided into the stagger
+                delay will not be started. The quantity should be cleanly
+                divided into stagger delay.
+
             """
-            self._harnesses = {}
+            self._harnesses = []
+            self._testplans = scenario_list
+            self._started = False
+            self._queued_calls = 0
+
+        def start(self, websocket_url):
+            """Schedules all the scenarios supplied"""
+            for scenario, quantity, stagger, overall_delay in self._testplans:
+                harness = RunnerHarness(websocket_url, scenario)
+                self._harnesses.append(harness)
+                iterations = quantity / stagger
+                for delay in range(iterations):
+                    def runall():
+                        for _ in range(stagger):
+                            harness.run()
+                        self._queued_calls -= 1
+                    self._queued_calls += 1
+                    reactor.callLater(overall_delay+delay, runall)
+            self._started = True
+
+        @property
+        def finished(self):
+            """Indicates whether or not the LoadRunner started, has run all the
+            calls it queued, and all the processors have finished"""
+            return all([
+                self._started,
+                self._queued_calls == 0,
+                all([x._processors == 0 for x in self._harnesses])
+            ])
 
 
 def check_processors(harness):
     """Task to shut down the reactor if there are no processors running"""
-    if not harness._processors:
+    if harness._processors == 0:
         reactor.stop()
+
+
+def check_loadrunner(load_runner):
+    """Task to shut down the reactor when the load runner has finished"""
+    if load_runner.finished:
+        reactor.stop()
+
+
+def locate_function(func_name):
+    """Locates and loads a function by the string name similar to an entry
+    points
+
+    Format of func_name: <package/module>:<function>
+
+    """
+    if ":" not in func_name:
+        raise Exception("Missing function designation")
+    mod, func_name = func_name.split(":")
+    module = importlib.import_module(mod)
+    scenario = getattr(module, func_name)
+    return scenario
+
+
+def parse_testplan(testplan):
+    """Parse a test plan string into an array of tuples"""
+    plans = testplan.split("|")
+    result = []
+    for plan in plans:
+        parts = [x.strip() for x in plan.strip().split(",")]
+        func_name = parts.pop(0)
+        func = locate_function(func_name)
+
+        # Attempt to coerce remaining arguments into integers
+        args = []
+        for part in parts:
+            try:
+                p = int(part)
+            except ValueError:
+                p = part
+            args.append(p)
+        args.insert(0, func)
+
+        result.append(tuple(args))
+    return result
 
 
 def run_scenario(args=None, run=True):
@@ -154,18 +238,57 @@ def run_scenario(args=None, run=True):
     """
     arguments = args or docopt(run_scenario.__doc__, version=__version__)
     arg = arguments["<scenario_function>"]
-    if ":" not in arg:
-        raise Exception("Missing function designation")
-    mod, func_name = arg.split(":")
-    module = importlib.import_module(mod)
-    scenario = getattr(module, func_name)
+    scenario = locate_function(arg)
     log.startLogging(sys.stdout)
     h = RunnerHarness(arguments["<websocket_url>"], scenario)
     h.run()
 
     if run:
         l = task.LoopingCall(check_processors, h)
-        l.start(1.0)
+        reactor.callLater(1, l.start, 1)
         reactor.run()
     else:
         return h
+
+
+def run_testplan(args=None, run=True):
+    """Run a testplan
+
+    Usage:
+        aplt_testplan <websocket_url> <test_plan>
+
+    test_plan should be a string with the following format:
+        "<scenario_function>, <quantity>, <stagger>, <delay>, *args | *repeat"
+
+    scenario_function
+        String indicating function for the scenario, ex: aplt.scenarios:basic
+
+    quantity
+        Integer quantity of instances of the scenario to launch
+
+    stagger
+        How many to launch per second up to <quantity> total
+
+    delay
+        How long to wait from when the test begins before this portion runs
+
+    *args
+        Any optional additional arguments to be supplied to the scenario. The
+        argument will be coerced to an integer if possible.
+
+    *repeat
+        More tuples of the same format.
+
+    """
+    arguments = args or docopt(run_testplan.__doc__, version=__version__)
+    testplans = parse_testplan(arguments["<test_plan>"])
+    lh = LoadRunner(testplans)
+    log.startLogging(sys.stdout)
+    lh.start(arguments["<websocket_url>"])
+
+    if run:
+        l = task.LoopingCall(check_loadrunner, lh)
+        reactor.callLater(1, l.start, 1)
+        reactor.run()
+    else:
+        return lh
