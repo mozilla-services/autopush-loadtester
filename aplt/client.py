@@ -42,9 +42,9 @@ class CommandProcessor(object, policies.TimeoutMixin):
     valid_handlers = ["connect", "disconnect", "error", "hello",
                       "notification", "register", "unregister"]
 
-    def __init__(self, scenario, harness):
+    def __init__(self, scenario, scenario_args, harness):
         self._harness = harness
-        self._scenario = scenario()
+        self._scenario = scenario(*scenario_args)
 
         # Command processing
         self._last_command = None
@@ -67,10 +67,10 @@ class CommandProcessor(object, policies.TimeoutMixin):
         try:
             self._run_command(func())
         except StopIteration:
-            self._harness.remove_processor(self)
+            self._harness.remove_processor()
         except:
             log.err()
-            self._harness.remove_processor(self)
+            self._harness.remove_processor()
 
     def _run_command(self, command):
         log.msg("Running command: ", command)
@@ -84,7 +84,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
         except:
             # Log the exception and shutdown the client
             log.err()
-            self._harness.remove_processor(self)
+            self._harness.remove_processor()
 
     def connect(self, command):
         """Run the connect command to start the websocket connection"""
