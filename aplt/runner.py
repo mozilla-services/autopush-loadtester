@@ -206,6 +206,17 @@ def locate_function(func_name):
     return scenario
 
 
+def try_int_list_coerce(lst):
+    """Attempt to coerce all the elements of a list to ints and return it"""
+    new_lst = []
+    for p in lst:
+        try:
+            new_lst.append(int(p))
+        except ValueError:
+            new_lst.append(p)
+    return new_lst
+
+
 def parse_testplan(testplan):
     """Parse a test plan string into an array of tuples"""
     plans = testplan.split("|")
@@ -214,17 +225,7 @@ def parse_testplan(testplan):
         parts = [x.strip() for x in plan.strip().split(",")]
         func_name = parts.pop(0)
         func = locate_function(func_name)
-
-        # Attempt to coerce remaining arguments into integers
-        args = []
-        for part in parts:
-            try:
-                p = int(part)
-            except ValueError:
-                p = part
-            args.append(p)
-        args.insert(0, func)
-
+        args = [func] + try_int_list_coerce(parts)
         result.append(tuple(args))
     return result
 
@@ -233,14 +234,15 @@ def run_scenario(args=None, run=True):
     """Run a scenario
 
     Usage:
-        aplt_scenario <websocket_url> <scenario_function>
+        aplt_scenario WEBSOCKET_URL SCENARIO_FUNCTION [SCENARIO_ARGS ...]
 
     """
     arguments = args or docopt(run_scenario.__doc__, version=__version__)
-    arg = arguments["<scenario_function>"]
+    arg = arguments["SCENARIO_FUNCTION"]
     scenario = locate_function(arg)
     log.startLogging(sys.stdout)
-    h = RunnerHarness(arguments["<websocket_url>"], scenario)
+    scenario_args = try_int_list_coerce(arguments["SCENARIO_ARGS"])
+    h = RunnerHarness(arguments["WEBSOCKET_URL"], scenario, *scenario_args)
     h.run()
 
     if run:
@@ -255,7 +257,7 @@ def run_testplan(args=None, run=True):
     """Run a testplan
 
     Usage:
-        aplt_testplan <websocket_url> <test_plan>
+        aplt_testplan WEBSOCKET_URL TEST_PLAN
 
     test_plan should be a string with the following format:
         "<scenario_function>, <quantity>, <stagger>, <delay>, *args | *repeat"
@@ -281,10 +283,10 @@ def run_testplan(args=None, run=True):
 
     """
     arguments = args or docopt(run_testplan.__doc__, version=__version__)
-    testplans = parse_testplan(arguments["<test_plan>"])
+    testplans = parse_testplan(arguments["TEST_PLAN"])
     lh = LoadRunner(testplans)
     log.startLogging(sys.stdout)
-    lh.start(arguments["<websocket_url>"])
+    lh.start(arguments["WEBSOCKET_URL"])
 
     if run:
         l = task.LoopingCall(check_loadrunner, lh)

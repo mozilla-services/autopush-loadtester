@@ -28,8 +28,8 @@ class TestIntegration(unittest.TestCase):
     def test_basic_runner(self):
         import aplt.runner as runner
         h = runner.run_scenario({
-            "<websocket_url>": "wss://autopush-dev.stage.mozaws.net/",
-            "<scenario_function>": "aplt.scenarios:basic",
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:basic",
         }, run=False)
         d = Deferred()
         reactor.callLater(0.5, self._check_done, h, d)
@@ -38,8 +38,8 @@ class TestIntegration(unittest.TestCase):
     def test_basic_testplan(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
-            "<websocket_url>": "wss://autopush-dev.stage.mozaws.net/",
-            "<test_plan>": "aplt.scenarios:basic, 5, 5, 0",
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "TEST_PLAN": "aplt.scenarios:basic, 5, 5, 0",
         }, run=False)
         d = Deferred()
         reactor.callLater(0.5, self._check_testplan_done, lh, d)
@@ -48,8 +48,8 @@ class TestIntegration(unittest.TestCase):
     def test_bad_load(self):
         import aplt.runner as runner
         self.assertRaises(Exception, runner.run_scenario, {
-            "<websocket_url>": "wss://autopush-dev.stage.mozaws.net/",
-            "<scenario_function>": "aplt.scenaribasic",
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenaribasic",
         }, run=False)
 
 
