@@ -30,6 +30,7 @@ class TestIntegration(unittest.TestCase):
         h = runner.run_scenario({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:basic",
+            "SCENARIO_ARGS": "",
         }, run=False)
         d = Deferred()
         reactor.callLater(0.5, self._check_done, h, d)
@@ -50,6 +51,7 @@ class TestIntegration(unittest.TestCase):
         self.assertRaises(Exception, runner.run_scenario, {
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenaribasic",
+            "SCENARIO_ARGS": "",
         }, run=False)
 
 
