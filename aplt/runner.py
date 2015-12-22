@@ -18,6 +18,12 @@ from aplt.client import (
     WSClientProtocol
 )
 
+# Necessary for latest version of txaio
+import txaio
+txaio.use_twisted()
+
+STATS_PROTOCOL = None
+
 
 class RunnerHarness(object):
     """Runs multiple instances of a single scenario
