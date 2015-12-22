@@ -68,8 +68,8 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
     def connect(self, processor):
         """Start a connection for a processor and queue it for when the
         connection is available"""
-        connectWS(self._factory, contextFactory=self._factory_context)
         self._connect_waiters.append(processor)
+        connectWS(self._factory, contextFactory=self._factory_context)
 
     def send_notification(self, processor, url, data, ttl):
         """Send out a notification to a url for a processor"""
@@ -251,7 +251,7 @@ def parse_testplan(testplan):
     plans = testplan.split("|")
     result = []
     for plan in plans:
-        parts = [x.strip() for x in plan.strip().split(",")]
+        parts = parse_string_to_list(plan)
         func_name = parts.pop(0)
         func = locate_function(func_name)
         args = [func] + try_int_list_coerce(parts)
@@ -259,12 +259,20 @@ def parse_testplan(testplan):
     return result
 
 
+def parse_string_to_list(string):
+    """Parse a string into a list of strings"""
+    if string:
+        return [x.strip() for x in string.strip().split(",")]
+    else:
+        return []
+
+
 def parse_statsd_args(args):
     """Parses statsd args out of a docopt arguments dict and returns a statsd
     client or None"""
     host = args.get("STATSD_HOST") or "localhost"
     port = int(args.get("STATSD_PORT") or 8125)
-    namespace = args.get("STATSD_NAMESPACE") or "aplt"
+    namespace = args.get("STATSD_NAMESPACE") or "push_test"
     return create_statsd_client(host, port, namespace)
 
 
@@ -283,7 +291,8 @@ def run_scenario(args=None, run=True):
     scenario = locate_function(arg)
     log.startLogging(sys.stdout)
     statsd_client = parse_statsd_args(arguments)
-    scenario_args = try_int_list_coerce(arguments["SCENARIO_ARGS"])
+    scenario_args = parse_string_to_list(arguments["SCENARIO_ARGS"] or "")
+    scenario_args = try_int_list_coerce(scenario_args)
     h = RunnerHarness(arguments["WEBSOCKET_URL"], statsd_client, scenario,
                       *scenario_args)
     h.run()

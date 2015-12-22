@@ -58,6 +58,28 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": "",
         }, run=False)
 
+    def test_basic_forever(self):
+        import aplt.runner as runner
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:basic_forever",
+            "SCENARIO_ARGS": "0, 1",
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(3, self._check_done, h, d)
+        return d
+
+    def test_reconnect_forever(self):
+        import aplt.runner as runner
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:reconnect_forever",
+            "SCENARIO_ARGS": "0, 1",
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(3, self._check_done, h, d)
+        return d
+
 
 class TestHarness(unittest.TestCase):
     def _make_harness(self):
