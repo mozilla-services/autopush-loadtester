@@ -68,8 +68,8 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
     def connect(self, processor):
         """Start a connection for a processor and queue it for when the
         connection is available"""
-        connectWS(self._factory, contextFactory=self._factory_context)
         self._connect_waiters.append(processor)
+        connectWS(self._factory, contextFactory=self._factory_context)
 
     def send_notification(self, processor, url, data, ttl):
         """Send out a notification to a url for a processor"""
