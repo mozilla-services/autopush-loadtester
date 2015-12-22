@@ -264,7 +264,7 @@ def parse_statsd_args(args):
     client or None"""
     host = args.get("STATSD_HOST") or "localhost"
     port = int(args.get("STATSD_PORT") or 8125)
-    namespace = args.get("STATSD_NAMESPACE") or "aplt"
+    namespace = args.get("STATSD_NAMESPACE") or "push_test"
     return create_statsd_client(host, port, namespace)
 
 
