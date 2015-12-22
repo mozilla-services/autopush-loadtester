@@ -251,12 +251,20 @@ def parse_testplan(testplan):
     plans = testplan.split("|")
     result = []
     for plan in plans:
-        parts = [x.strip() for x in plan.strip().split(",")]
+        parts = parse_string_to_list(plan)
         func_name = parts.pop(0)
         func = locate_function(func_name)
         args = [func] + try_int_list_coerce(parts)
         result.append(tuple(args))
     return result
+
+
+def parse_string_to_list(string):
+    """Parse a string into a list of strings"""
+    if string:
+        return [x.strip() for x in string.strip().split(",")]
+    else:
+        return []
 
 
 def parse_statsd_args(args):
@@ -283,10 +291,8 @@ def run_scenario(args=None, run=True):
     scenario = locate_function(arg)
     log.startLogging(sys.stdout)
     statsd_client = parse_statsd_args(arguments)
-    scenario_args = arguments["SCENARIO_ARGS"]
-    if scenario_args:
-        parts = [x.strip() for x in scenario_args.strip().split(",")]
-        scenario_args = try_int_list_coerce(parts)
+    scenario_args = parse_string_to_list(arguments["SCENARIO_ARGS"] or "")
+    scenario_args = try_int_list_coerce(scenario_args)
     h = RunnerHarness(arguments["WEBSOCKET_URL"], statsd_client, scenario,
                       *scenario_args)
     h.run()
