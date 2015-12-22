@@ -15,12 +15,12 @@ You will also need virtualenv installed on your system to setup a virtualenv for
 `ap-loadtester`. Assuming you have virtualenv and have downloaded pypy, you
 could then setup the loadtester for use with the following commands:
 
-**Linux:** 
+**Linux:**
 
     $ tar xjvf pypy-4.0.1-linux64.tar.bz2
     $ virtualenv -p pypy-4.0.1-linux64/bin/pypy apenv
 
-**OSX:** 
+**OSX:**
 
     $ tar xjvf pypy-4.0.1-osx64.tar.bz2
     $ virtualenv -p pypy-4.0.1-osx64/bin/pypy apenv
@@ -43,7 +43,7 @@ continue to [Developing](#developing).
 
 Install the `ap-loadtester` package:
 
-    $ pip install ap-loadtester
+    $ easy_install install ap-loadtester
 
 Run the basic scenario against the dev server:
 
@@ -56,20 +56,20 @@ virtualenv is active:
 
     $ python setup.py develop
 
-## Notes on Installation 
+## Notes on Installation
 
 **'openssl/aes.h' file not found**
 
-If you get the following error: 
+If you get the following error:
 
     $ fatal error: 'openssl/aes.h' file not found
 
 Linux: You'll need to install OpenSSL:
 
-    $ sudo apt-get install libssl-dev 
+    $ sudo apt-get install libssl-dev
 
 OSX: Apple has deprecated OpenSSL in favor of its own TLS and crypto libraries.
-If you get this error on OSX (El Capitan), install OpenSSL with brew, then 
+If you get this error on OSX (El Capitan), install OpenSSL with brew, then
 link brew libraries and install cryptography:
 
     $ brew install openssl

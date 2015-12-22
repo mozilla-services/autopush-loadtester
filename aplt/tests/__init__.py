@@ -7,13 +7,17 @@ from twisted.trial import unittest
 
 class TestIntegration(unittest.TestCase):
     def _check_done(self, harness, d):
+        from aplt.runner import STATS_PROTOCOL
         if not harness._processors:
+            STATS_PROTOCOL.stopListening()
             d.callback(True)
         else:
             reactor.callLater(0.5, self._check_done, harness, d)
 
     def _check_testplan_done(self, load_runner, d):
+        from aplt.runner import STATS_PROTOCOL
         if load_runner.finished:
+            STATS_PROTOCOL.stopListening()
             d.callback(True)
         else:
             reactor.callLater(0.5, self._check_testplan_done, load_runner, d)
@@ -57,9 +61,16 @@ class TestIntegration(unittest.TestCase):
 
 class TestHarness(unittest.TestCase):
     def _make_harness(self):
-        from aplt.runner import RunnerHarness
+        from aplt.runner import RunnerHarness, parse_statsd_args
         from aplt.scenarios import basic
-        return RunnerHarness("wss://autopush-dev.stage.mozaws.net/", basic)
+        client = parse_statsd_args({})
+        return RunnerHarness("wss://autopush-dev.stage.mozaws.net/", basic,
+                             client)
+
+    def tearDown(self):
+        from aplt.runner import STATS_PROTOCOL
+        if STATS_PROTOCOL:
+            STATS_PROTOCOL.stopListening()
 
     def test_no_waiting_processors(self):
         h = self._make_harness()
