@@ -283,7 +283,9 @@ def run_scenario(args=None, run=True):
     scenario = locate_function(arg)
     log.startLogging(sys.stdout)
     statsd_client = parse_statsd_args(arguments)
-    scenario_args = try_int_list_coerce(arguments["SCENARIO_ARGS"])
+    scenario_args = arguments["SCENARIO_ARGS"] or ""
+    parts = [x.strip() for x in scenario_args.strip().split(",")]
+    scenario_args = try_int_list_coerce(parts)
     h = RunnerHarness(arguments["WEBSOCKET_URL"], statsd_client, scenario,
                       *scenario_args)
     h.run()
