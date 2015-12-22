@@ -44,6 +44,18 @@ class wait(namedtuple("Wait", "time")):
     pass
 
 
+class timer_start(namedtuple("TimerStart", "name")):
+    pass
+
+
+class timer_end(namedtuple("TimerEnd", "name")):
+    pass
+
+
+class counter(namedtuple("Counter", "name count")):
+    pass
+
+
 # Helper functions to use with commands
 def random_channel_id():
     return uuid.uuid4().hex

@@ -4,6 +4,7 @@ Handles interactions on behalf of a single client.
 
 """
 import json
+import time
 
 from autobahn.twisted.websocket import WebSocketClientProtocol
 from twisted.protocols import policies
@@ -38,7 +39,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
     """Created per Virtual Client to run a client scenario"""
     valid_commands = ["connect", "disconnect", "register", "hello",
                       "unregister", "send_notification", "expect_notification",
-                      "ack", "wait"]
+                      "ack", "wait", "timer_start", "timer_end", "counter"]
     valid_handlers = ["connect", "disconnect", "error", "hello",
                       "notification", "register", "unregister"]
 
@@ -55,6 +56,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
         self._connected = False
         self._ws_client = None
         self._notifications = []
+        self._timers = {}
 
     def run(self):
         """Start the scenario"""
@@ -154,6 +156,30 @@ class CommandProcessor(object, policies.TimeoutMixin):
                           version=command.version)]
         ))
         # We don't get a result of confirmation of ack's
+        self._send_command_result(None)
+
+    def timer_start(self, command):
+        """Start a metric timer"""
+        if command.name in self._timers:
+            raise Exception("Can't start a timer that was already started: %s"
+                            % command.name)
+
+        self._timers[command.name] = time.time()
+        self._send_command_result(None)
+
+    def timer_end(self, command):
+        """End a metric timer, handle its submission"""
+        start = self._timers.pop(command.name, None)
+        if not start:
+            raise Exception("Can't end a timer that wasn't started: %s" %
+                            command.name)
+        duration = int((time.time() - start) * 1000)
+        self._harness.timer(command.name, duration)
+        self._send_command_result(duration)
+
+    def counter(self, command):
+        """Metric Counter"""
+        self._harness.counter(command.name, command.count)
         self._send_command_result(None)
 
     def timeoutConnection(self):

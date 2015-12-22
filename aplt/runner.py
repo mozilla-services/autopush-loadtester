@@ -11,6 +11,8 @@ from autobahn.twisted.websocket import (
 from docopt import docopt
 from twisted.internet import reactor, ssl, task
 from twisted.python import log
+from txstatsd.client import StatsDClientProtocol, TwistedStatsDClient
+from txstatsd.metrics.metrics import Metrics
 
 from aplt import __version__
 from aplt.client import (
@@ -32,7 +34,7 @@ class RunnerHarness(object):
     will run to completion or possibly forever.
 
     """
-    def __init__(self, websocket_url, scenario, *scenario_args):
+    def __init__(self, websocket_url, statsd_client, scenario, *scenario_args):
         self._factory = WebSocketClientFactory(
             websocket_url,
             headers={"Origin": "localhost:9000"},
@@ -54,6 +56,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         self._processors = 0
         self._ws_clients = {}
         self._connect_waiters = deque()
+        self._stat_client = statsd_client
 
     def run(self):
         """Start registered scenario"""
@@ -126,10 +129,18 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         """Remove a completed processor"""
         self._processors -= 1
 
+    def timer(self, name, duration):
+        """Record a metric timer if we have a statsd client"""
+        self._stat_client.timing(name, duration)
+
+    def counter(self, name, count=1):
+        """Record a counter if we have a statsd client"""
+        self._stat_client.increment(name, count)
+
 
 class LoadRunner(object):
         """Runs a bunch of scenarios for a load-test"""
-        def __init__(self, scenario_list):
+        def __init__(self, scenario_list, statsd_client):
             """Initializes a LoadRunner
 
             Takes a list of tuples indicating scenario to run, quantity,
@@ -158,11 +169,13 @@ class LoadRunner(object):
             self._testplans = scenario_list
             self._started = False
             self._queued_calls = 0
+            self._statsd_client = statsd_client
 
         def start(self, websocket_url):
             """Schedules all the scenarios supplied"""
             for scenario, quantity, stagger, overall_delay in self._testplans:
-                harness = RunnerHarness(websocket_url, scenario)
+                harness = RunnerHarness(websocket_url, self._statsd_client,
+                                        scenario)
                 self._harnesses.append(harness)
                 iterations = quantity / stagger
                 for delay in range(iterations):
@@ -185,15 +198,25 @@ class LoadRunner(object):
             ])
 
 
+def create_statsd_client(host="localhost", port=8125, namespace="aplt"):
+    global STATS_PROTOCOL
+    client = TwistedStatsDClient(host, port)
+    protocol = StatsDClientProtocol(client)
+    STATS_PROTOCOL = reactor.listenUDP(0, protocol)
+    return Metrics(connection=client, namespace=namespace)
+
+
 def check_processors(harness):
     """Task to shut down the reactor if there are no processors running"""
     if harness._processors == 0:
+        STATS_PROTOCOL.stopListening()
         reactor.stop()
 
 
 def check_loadrunner(load_runner):
     """Task to shut down the reactor when the load runner has finished"""
     if load_runner.finished:
+        STATS_PROTOCOL.stopListening()
         reactor.stop()
 
 
@@ -236,19 +259,33 @@ def parse_testplan(testplan):
     return result
 
 
+def parse_statsd_args(args):
+    """Parses statsd args out of a docopt arguments dict and returns a statsd
+    client or None"""
+    host = args.get("STATSD_HOST") or "localhost"
+    port = int(args.get("STATSD_PORT") or 8125)
+    namespace = args.get("STATSD_NAMESPACE") or "aplt"
+    return create_statsd_client(host, port, namespace)
+
+
 def run_scenario(args=None, run=True):
     """Run a scenario
 
     Usage:
         aplt_scenario WEBSOCKET_URL SCENARIO_FUNCTION [SCENARIO_ARGS ...]
+                      [--statsd_host STATSD_HOST]
+                      [--statsd_port STATSD_PORT]
+                      [--statsd_namespace STATSD_NAMESPACE]
 
     """
     arguments = args or docopt(run_scenario.__doc__, version=__version__)
     arg = arguments["SCENARIO_FUNCTION"]
     scenario = locate_function(arg)
     log.startLogging(sys.stdout)
+    statsd_client = parse_statsd_args(arguments)
     scenario_args = try_int_list_coerce(arguments["SCENARIO_ARGS"])
-    h = RunnerHarness(arguments["WEBSOCKET_URL"], scenario, *scenario_args)
+    h = RunnerHarness(arguments["WEBSOCKET_URL"], statsd_client, scenario,
+                      *scenario_args)
     h.run()
 
     if run:
@@ -264,6 +301,9 @@ def run_testplan(args=None, run=True):
 
     Usage:
         aplt_testplan WEBSOCKET_URL TEST_PLAN
+                      [--statsd_host STATSD_HOST]
+                      [--statsd_port STATSD_PORT]
+                      [--statsd_namespace STATSD_NAMESPACE]
 
     test_plan should be a string with the following format:
         "<scenario_function>, <quantity>, <stagger>, <delay>, *args | *repeat"
@@ -290,7 +330,8 @@ def run_testplan(args=None, run=True):
     """
     arguments = args or docopt(run_testplan.__doc__, version=__version__)
     testplans = parse_testplan(arguments["TEST_PLAN"])
-    lh = LoadRunner(testplans)
+    statsd_client = parse_statsd_args(arguments)
+    lh = LoadRunner(testplans, statsd_client)
     log.startLogging(sys.stdout)
     lh.start(arguments["WEBSOCKET_URL"])
 
