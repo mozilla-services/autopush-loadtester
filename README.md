@@ -43,7 +43,7 @@ continue to [Developing](#developing).
 
 Install the `ap-loadtester` package:
 
-    $ pip install ap-loadtester
+    $ easy_install install ap-loadtester
 
 Run the basic scenario against the dev server:
 
