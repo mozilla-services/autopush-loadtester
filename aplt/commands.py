@@ -1,4 +1,6 @@
 """Commands to run per tester"""
+import os
+import random
 import uuid
 from collections import namedtuple
 
@@ -59,3 +61,11 @@ class counter(namedtuple("Counter", "name count")):
 # Helper functions to use with commands
 def random_channel_id():
     return uuid.uuid4().hex
+
+
+def random_data(min_length, max_length=4096):
+    if min_length == max_length:
+        length = min_length
+    else:
+        length = random.randrange(min_length, max_length)
+    return length, os.urandom(length)
