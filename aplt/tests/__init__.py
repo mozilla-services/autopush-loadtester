@@ -1,5 +1,5 @@
 from mock import Mock, patch
-from nose.tools import eq_
+from nose.tools import eq_, raises
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.trial import unittest
@@ -34,7 +34,7 @@ class TestIntegration(unittest.TestCase):
         h = runner.run_scenario({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:basic",
-            "SCENARIO_ARGS": "",
+            "SCENARIO_ARGS": [],
         }, run=False)
         d = Deferred()
         reactor.callLater(0.5, self._check_done, h, d)
@@ -50,9 +50,18 @@ class TestIntegration(unittest.TestCase):
         reactor.callLater(0.5, self._check_testplan_done, lh, d)
         return d
 
+    @raises(Exception)
+    def test_bad_testplan(self):
+        import aplt.runner as runner
+        runner.run_testplan({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "TEST_PLAN": "aplt.scenarios:basic, 5, 5",
+        }, run=False)
+
+    @raises(Exception)
     def test_bad_load(self):
         import aplt.runner as runner
-        self.assertRaises(Exception, runner.run_scenario, {
+        runner.run_scenario({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenaribasic",
             "SCENARIO_ARGS": "",
@@ -63,7 +72,7 @@ class TestIntegration(unittest.TestCase):
         h = runner.run_scenario({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:basic_forever",
-            "SCENARIO_ARGS": "0, 1",
+            "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
         d = Deferred()
         reactor.callLater(3, self._check_done, h, d)
@@ -74,7 +83,7 @@ class TestIntegration(unittest.TestCase):
         h = runner.run_scenario({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:reconnect_forever",
-            "SCENARIO_ARGS": "0, 1",
+            "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
         d = Deferred()
         reactor.callLater(3, self._check_done, h, d)
@@ -107,3 +116,29 @@ class TestHarness(unittest.TestCase):
         mock_client = Mock()
         h.remove_client(mock_client)
         eq_(mock_connect.called, True)
+
+
+class TestRunnerFunctions(unittest.TestCase):
+    @raises(Exception)
+    def test_verify_func_too_many_args(self):
+        from aplt.runner import verify_arguments
+        from aplt.scenarios import basic
+        verify_arguments(basic, "extra_arg")
+
+    @raises(Exception)
+    def test_verify_func_short_an_arg(self):
+        from aplt.runner import verify_arguments
+
+        def needsanarg(some_arg):  # pragma: nocover
+            print some_arg
+
+        verify_arguments(needsanarg)
+
+    def test_verify_func_kwargs(self):
+        from aplt.runner import verify_arguments
+
+        def extras(*theargs):
+            print theargs
+
+        result = verify_arguments(extras, 1, 2, 3, 4, 5)
+        eq_(result, True)
