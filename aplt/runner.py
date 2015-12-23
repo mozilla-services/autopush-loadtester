@@ -244,7 +244,6 @@ def verify_arguments(func, *func_args):
     # First, check the minimum required arg length
     defaults = defaults or []
     min_arg_len = len(args) - len(defaults)
-    print min_arg_len, arg_len
     if arg_len < min_arg_len:
         raise Exception("%s takes minimum of %s args, %s supplied." % (
                         func, min_arg_len, arg_len))
