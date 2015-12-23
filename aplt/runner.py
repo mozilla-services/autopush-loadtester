@@ -1,5 +1,6 @@
 """Scenario Runner"""
 import importlib
+import inspect
 import sys
 from collections import deque
 
@@ -235,6 +236,28 @@ def locate_function(func_name):
     return scenario
 
 
+def verify_arguments(func, *func_args):
+    """Verify that a function can be called with the arguments supplied"""
+    args, varargs, keywords, defaults = inspect.getargspec(func)
+    arg_len = len(func_args)
+
+    # First, check the minimum required arg length
+    defaults = defaults or []
+    min_arg_len = len(args) - len(defaults)
+    if arg_len < min_arg_len:
+        raise Exception("%s takes minimum of %s args, %s supplied." % (
+                        func, min_arg_len, arg_len))
+
+    # Met the min args, if the function has * it can handle anything else
+    if varargs:
+        return True
+
+    # Finally, check for inability to call function with so many args
+    if arg_len > len(args):
+        raise Exception("%s takes maximum of %s args, %s supplied." % (
+                        func, len(args), arg_len))
+
+
 def try_int_list_coerce(lst):
     """Attempt to coerce all the elements of a list to ints and return it"""
     new_lst = []
@@ -253,8 +276,14 @@ def parse_testplan(testplan):
     for plan in plans:
         parts = parse_string_to_list(plan)
         func_name = parts.pop(0)
+        if len(parts) < 3:
+            raise Exception("Error parsing test plan. Plan for %s needs 3 "
+                            "arguments, only got: %s" % (func_name, parts))
         func = locate_function(func_name)
-        args = [func] + try_int_list_coerce(parts)
+        int_args = try_int_list_coerce(parts)
+        func_args = int_args[3:]
+        verify_arguments(func, *func_args)
+        args = [func] + int_args
         result.append(tuple(args))
     return result
 
@@ -291,8 +320,8 @@ def run_scenario(args=None, run=True):
     scenario = locate_function(arg)
     log.startLogging(sys.stdout)
     statsd_client = parse_statsd_args(arguments)
-    scenario_args = parse_string_to_list(arguments["SCENARIO_ARGS"] or "")
-    scenario_args = try_int_list_coerce(scenario_args)
+    scenario_args = try_int_list_coerce(arguments["SCENARIO_ARGS"])
+    verify_arguments(scenario, *scenario_args)
     h = RunnerHarness(arguments["WEBSOCKET_URL"], statsd_client, scenario,
                       *scenario_args)
     h.run()
