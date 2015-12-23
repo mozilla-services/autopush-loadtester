@@ -49,12 +49,24 @@ Run the basic scenario against the dev server:
 
     $ aplt_scenario wss://autopush-dev.stage.mozaws.net/ aplt.scenarios:basic
 
+Run 5 instances of the basic scenario, starting one every second, against the
+dev server:
+
+    $ aplt_testplan wss://autopush-dev.stage.mozaws.net/ "aplt.scenarios:basic 5 1 0"
+
+Either of these scripts can be run with `-h` for full help documentation.
+
+See [SCENARIOS](SCENARIOS.md) for guidance on writing a scenario function for
+use with `ap-loadtester`.
+
 ## Developing
 
 Checkout the code from this repository and run the package setup after the
 virtualenv is active:
 
     $ python setup.py develop
+
+See [Contributing](CONTRIBUTING.md) for contribution guidelines.
 
 ## Notes on Installation
 
