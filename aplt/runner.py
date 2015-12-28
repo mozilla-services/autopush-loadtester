@@ -174,9 +174,10 @@ class LoadRunner(object):
 
         def start(self, websocket_url):
             """Schedules all the scenarios supplied"""
-            for scenario, quantity, stagger, overall_delay in self._testplans:
+            for scenario, quantity, stagger, overall_delay, scenario_args \
+                    in self._testplans:
                 harness = RunnerHarness(websocket_url, self._statsd_client,
-                                        scenario)
+                                        scenario, *scenario_args)
                 self._harnesses.append(harness)
                 iterations = quantity / stagger
                 for delay in range(iterations):
@@ -283,7 +284,8 @@ def parse_testplan(testplan):
         int_args = try_int_list_coerce(parts)
         func_args = int_args[3:]
         verify_arguments(func, *func_args)
-        args = [func] + int_args
+        args = [func] + int_args[:3]
+        args.append(tuple(func_args))
         result.append(tuple(args))
     return result
 
