@@ -60,6 +60,14 @@ def basic_forever(notif_delay=300, run_once=0):
             break
 
 
+def connect_and_idle_forever():
+    yield connect()
+    yield hello(None)
+
+    while True:
+        yield wait(100)
+
+
 def reconnect_forever(reconnect_delay=300, run_once=0):
     """Reconnects every delay interval, sends a notification
 
