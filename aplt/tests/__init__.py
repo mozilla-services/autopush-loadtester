@@ -50,6 +50,16 @@ class TestIntegration(unittest.TestCase):
         reactor.callLater(0.5, self._check_testplan_done, lh, d)
         return d
 
+    def test_basic_testplan_with_args(self):
+        import aplt.runner as runner
+        lh = runner.run_testplan({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "TEST_PLAN": "aplt.scenarios:basic_forever, 5, 5, 0, 1, 1",
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0.5, self._check_testplan_done, lh, d)
+        return d
+
     @raises(Exception)
     def test_bad_testplan(self):
         import aplt.runner as runner
@@ -137,7 +147,7 @@ class TestRunnerFunctions(unittest.TestCase):
     def test_verify_func_kwargs(self):
         from aplt.runner import verify_arguments
 
-        def extras(*theargs):
+        def extras(*theargs):  # pragma: nocover
             print theargs
 
         result = verify_arguments(extras, 1, 2, 3, 4, 5)
