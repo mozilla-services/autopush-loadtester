@@ -1,0 +1,9 @@
+[clog]
+changelog = "CHANGELOG.md"
+from-latest-tag = true
+
+[sections]
+Refactor = ["refactor"]
+Test = ["test"]
+Doc = ["docs"]
+Chore = ["chore"]
