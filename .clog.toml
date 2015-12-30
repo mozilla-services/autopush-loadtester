@@ -1,6 +1,8 @@
 [clog]
+repository = "https://github.com/mozilla-services/ap-loadtester"
 changelog = "CHANGELOG.md"
 from-latest-tag = true
+link-style = "github"
 
 [sections]
 Refactor = ["refactor"]
