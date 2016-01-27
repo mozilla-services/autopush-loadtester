@@ -184,13 +184,13 @@ class CommandProcessor(object, policies.TimeoutMixin):
 
     def timeoutConnection(self):
         """Called by the timer when a timeout has hit"""
+        self.setTimeout(None)
         if self._expecting:
             self._send_command_result(None)
 
         if self._waiting:
             self._waiting = False
             self._send_command_result(None)
-        self.setTimeout(None)
 
     def _send_json(self, data):
         if not self._ws_client:
