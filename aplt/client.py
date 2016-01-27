@@ -146,7 +146,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
     def wait(self, command):
         """Wait for a period of time"""
         self._waiting = True
-        self.setTimeout(command.time)
+        self.setTimeout(int(command.time))
 
     def ack(self, command):
         """Acknowledge a message id"""
