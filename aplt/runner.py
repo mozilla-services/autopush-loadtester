@@ -84,6 +84,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
                     "Content-Encoding": "aesgcm-128",
                     "Encryption": self._crypto_key,
                     "Encryption-Key": "Invalid-Key-Used-Here",
+                    "TTL": str(ttl),
                 },
                 allow_redirects=False)
         else:
