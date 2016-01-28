@@ -5,6 +5,13 @@ from twisted.internet.defer import Deferred
 from twisted.trial import unittest
 
 
+def _wait_multiple():
+    from aplt.commands import wait
+    yield wait(0.1)
+    yield wait(0.1)
+    yield wait(0.1)
+
+
 class TestIntegration(unittest.TestCase):
     def _check_done(self, harness, d):
         from aplt.runner import STATS_PROTOCOL
@@ -55,6 +62,16 @@ class TestIntegration(unittest.TestCase):
         lh = runner.run_testplan({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "TEST_PLAN": "aplt.scenarios:basic_forever, 5, 5, 0, 1, 1",
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0.5, self._check_testplan_done, lh, d)
+        return d
+
+    def test_wait_twice(self):
+        import aplt.runner as runner
+        lh = runner.run_testplan({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "TEST_PLAN": "aplt.tests:_wait_multiple, 1, 1, 0",
         }, run=False)
         d = Deferred()
         reactor.callLater(0.5, self._check_testplan_done, lh, d)
