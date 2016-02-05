@@ -19,7 +19,7 @@ setup(
         "service-identity>=14.0.0",
         "treq>=15.0.0",
         "pyOpenSSL>=0.15.1",
-        "txaio==2.2.0",
+        "txaio==2.2.1",
         "txStatsD==1.0.0",
     ],
     entry_points="""

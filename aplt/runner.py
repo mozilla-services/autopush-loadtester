@@ -12,14 +12,13 @@ from autobahn.twisted.websocket import (
 from docopt import docopt
 from twisted.internet import reactor, ssl, task
 from twisted.python import log
-from txstatsd.client import StatsDClientProtocol, TwistedStatsDClient
-from txstatsd.metrics.metrics import Metrics
 
 from aplt import __version__
 from aplt.client import (
     CommandProcessor,
     WSClientProtocol
 )
+import aplt.metrics as metrics
 
 # Necessary for latest version of txaio
 import txaio
@@ -201,25 +200,17 @@ class LoadRunner(object):
             ])
 
 
-def create_statsd_client(host="localhost", port=8125, namespace="aplt"):
-    global STATS_PROTOCOL
-    client = TwistedStatsDClient(host, port)
-    protocol = StatsDClientProtocol(client)
-    STATS_PROTOCOL = reactor.listenUDP(0, protocol)
-    return Metrics(connection=client, namespace=namespace)
-
-
 def check_processors(harness):
     """Task to shut down the reactor if there are no processors running"""
     if harness._processors == 0:
-        STATS_PROTOCOL.stopListening()
+        harness.metrics.stop()
         reactor.stop()
 
 
 def check_loadrunner(load_runner):
     """Task to shut down the reactor when the load runner has finished"""
     if load_runner.finished:
-        STATS_PROTOCOL.stopListening()
+        load_runner.metrics.stop()
         reactor.stop()
 
 
@@ -302,10 +293,23 @@ def parse_string_to_list(string):
 def parse_statsd_args(args):
     """Parses statsd args out of a docopt arguments dict and returns a statsd
     client or None"""
-    host = args.get("STATSD_HOST") or "localhost"
-    port = int(args.get("STATSD_PORT") or 8125)
-    namespace = args.get("STATSD_NAMESPACE") or "push_test"
-    return create_statsd_client(host, port, namespace)
+    namespace = args.get("--metric_namespace") or "push_test"
+    if args.get("--statsd_host"):
+        # We're using statsd
+        host = args.get("--statsd_host")
+        port = int(args.get("--statsd_port") or 8125)
+        return metrics.TwistedMetrics(host, port, namespace)
+    elif args.get("--datadog_api_key"):
+        # We're using datadog
+        return metrics.DatadogMetrics(
+            api_key=args.get("--datadog_api_key"),
+            app_key=args.get("--datadog_app_key"),
+            flush_interval=args.get("--datadog_flush_interval"),
+            namespace=namespace
+        )
+    else:
+        # Metric sink
+        return metrics.SinkMetrics()
 
 
 def run_scenario(args=None, run=True):
@@ -313,9 +317,12 @@ def run_scenario(args=None, run=True):
 
     Usage:
         aplt_scenario WEBSOCKET_URL SCENARIO_FUNCTION [SCENARIO_ARGS ...]
-                      [--statsd_host STATSD_HOST]
-                      [--statsd_port STATSD_PORT]
-                      [--statsd_namespace STATSD_NAMESPACE]
+                      [--metric_namespace=METRIC_NAMESPACE]
+                      [--statsd_host=STATSD_HOST]
+                      [--statsd_port=STATSD_PORT]
+                      [--datadog_api_key=DD_API_KEY]
+                      [--datadog_app_key=DD_APP_KEY]
+                      [--datadog_flush_interval=DD_FLUSH_INTERVAL]
 
     """
     arguments = args or docopt(run_scenario.__doc__, version=__version__)
@@ -327,6 +334,8 @@ def run_scenario(args=None, run=True):
     verify_arguments(scenario, *scenario_args)
     h = RunnerHarness(arguments["WEBSOCKET_URL"], statsd_client, scenario,
                       *scenario_args)
+    h.metrics = statsd_client
+    statsd_client.start()
     h.run()
 
     if run:
@@ -342,9 +351,12 @@ def run_testplan(args=None, run=True):
 
     Usage:
         aplt_testplan WEBSOCKET_URL TEST_PLAN
-                      [--statsd_host STATSD_HOST]
-                      [--statsd_port STATSD_PORT]
-                      [--statsd_namespace STATSD_NAMESPACE]
+                      [--metric_namespace=METRIC_NAMESPACE]
+                      [--statsd_host=STATSD_HOST]
+                      [--statsd_port=STATSD_PORT]
+                      [--datadog_api_key=DD_API_KEY]
+                      [--datadog_app_key=DD_APP_KEY]
+                      [--datadog_flush_interval=DD_FLUSH_INTERVAL]
 
     test_plan should be a string with the following format:
         "<scenario_function>, <quantity>, <stagger>, <delay>, *args | *repeat"
@@ -374,6 +386,8 @@ def run_testplan(args=None, run=True):
     statsd_client = parse_statsd_args(arguments)
     lh = LoadRunner(testplans, statsd_client)
     log.startLogging(sys.stdout)
+    statsd_client.start()
+    lh.metrics = statsd_client
     lh.start(arguments["WEBSOCKET_URL"])
 
     if run:
