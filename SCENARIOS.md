@@ -37,6 +37,11 @@ documented in [the SimplePush protocol docs](http://mozilla-push-service.readthe
 
 Any command that lists *arguments* must have all arguments supplied.
 
+Commands *may throw exceptions* if an error occurs. These can occur during any
+of the commands should the connection be dropped unexpectedly, or should a
+notification fail to send. Exceptions will be thrown where the command was
+yielded, and any client connections should be considered invalid.
+
 Full list of commands available in `aplt.commands` module:
 
 * [connect](#connect)
@@ -273,4 +278,24 @@ Generate and return random binary data between the given min/max data length.
 
 ```python
 data = random_data(2048, 4096)
+```
+
+## Decorators
+
+Scenario decorators modify the behavior of a scenario.
+
+Full list of commands available in `aplt.decorators` module:
+
+* [restart](#restart)
+
+### restart
+
+Restart the scenario in the event an uncaught exception occurs. Takes one
+parameter indicating how many times the scenario should be restarted if an
+error occurs, ``0`` may be used to indicate indefinite retries.
+
+```python
+@restart(2)
+def my_scenario():
+    ...
 ```
