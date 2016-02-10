@@ -17,6 +17,7 @@ from aplt.commands import (
     counter,
     wait,
 )
+from aplt.decorators import restart
 
 
 def basic():
@@ -101,3 +102,17 @@ def reconnect_forever(reconnect_delay=300, run_once=0):
         if run_once:
             yield disconnect()
             break
+
+
+##############################################################################
+# TEST SCENARIOS
+##############################################################################
+_RESTARTS = 0
+
+
+@restart(2)
+def _explode():
+    global _RESTARTS
+    yield connect()
+    _RESTARTS += 1
+    yield connect()

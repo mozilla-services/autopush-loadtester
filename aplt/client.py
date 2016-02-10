@@ -5,6 +5,7 @@ Handles interactions on behalf of a single client.
 """
 import json
 import time
+import sys
 
 from autobahn.twisted.websocket import WebSocketClientProtocol
 from twisted.protocols import policies
@@ -45,7 +46,17 @@ class CommandProcessor(object, policies.TimeoutMixin):
 
     def __init__(self, scenario, scenario_args, harness):
         self._harness = harness
-        self._scenario = scenario(*scenario_args)
+        self._retries = getattr(scenario, "_retries", None)
+        self._current_tries = 0
+        self._scenario_func = scenario
+        self._scenario_args = scenario_args
+
+        self._reset()
+
+    def _reset(self):
+        """Reset for a startover or initialization"""
+        # Setup the scenario
+        self._scenario = self._scenario_func(*self._scenario_args)
 
         # Command processing
         self._last_command = None
@@ -58,35 +69,65 @@ class CommandProcessor(object, policies.TimeoutMixin):
         self._notifications = []
         self._timers = {}
 
+        # Ensure no timers are set
+        self.setTimeout(None)
+
     def run(self):
         """Start the scenario"""
         self._run_safely(lambda: self._scenario.next())
 
+    def shutdown(self, ended):
+        """Shutdown the scenario after it's over, if needed"""
+        self._current_tries += 1
+        retry = self._retries == 0 or (self._current_tries <= self._retries)
+        if ended or (not retry):
+            self._harness.remove_processor()
+        else:
+            # Start it back up again!
+            self._reset()
+            self.run()
+
     def _send_command_result(self, result):
         self._run_safely(lambda: self._scenario.send(result))
+
+    def _send_exception(self):
+        """Send the current exception being handled into a generator and drop
+        any active connection"""
+        if self._connected:
+            self._connected = False
+            # Remove ourselves as a processor so we don't get the closed event
+            del self._ws_client.processor
+
+            # Send the close, and drop our reference to the client
+            self._ws_client.sendClose()
+            self._ws_client = None
+
+        def throw():
+            self._scenario.throw(*sys.exc_info())
+        self._run_safely(throw)
 
     def _run_safely(self, func, throw=False):
         try:
             self._run_command(func())
         except StopIteration:
-            self._harness.remove_processor()
+            self.shutdown(ended=True)
         except:
             log.err()
-            self._harness.remove_processor()
+            self.shutdown(ended=False)
 
     def _run_command(self, command):
         log.msg("Running command: ", command)
         command_name = command.__class__.__name__
-        try:
-            if command_name not in self.valid_commands:
-                raise Exception("Invalid command: %s" % command_name)
+        if command_name not in self.valid_commands:
+            raise Exception("Invalid command: %s" % command_name)
 
-            self._last_command = command_name
-            getattr(self, command_name)(command)
+        self._last_command = command_name
+        command_func = getattr(self, command_name)
+
+        try:
+            command_func(command)
         except:
-            # Log the exception and shutdown the client
-            log.err()
-            self._harness.remove_processor()
+            self._send_exception()
 
     def connect(self, command):
         """Run the connect command to start the websocket connection"""
@@ -135,7 +176,8 @@ class CommandProcessor(object, policies.TimeoutMixin):
             return self._send_command_result(notif)
 
         # If we're already expecting a notification, the timeout is set
-        # already
+        # already. This can occur when we're called for an incoming client
+        # message vs. a command run from a yield.
         if self._expecting:
             return
 
@@ -186,6 +228,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
         """Called by the timer when a timeout has hit"""
         self.setTimeout(None)
         if self._expecting:
+            self._expecting = None
             self._send_command_result(None)
 
         if self._waiting:
@@ -220,8 +263,12 @@ class CommandProcessor(object, policies.TimeoutMixin):
 
         if self._last_command != message_type:
             # All websocket events except the notification need the command
-            # preceding them, or we should cancel the client.
-            self._raise_unexpected_event(data)
+            # preceding them. Otherwise we throw an exception into the
+            # scenario.
+            try:
+                self._raise_unexpected_event(data)
+            except:
+                self._send_exception()
 
         if "connect" in message_type:
             # If this is a connect/disconnect, set the connected appropriately

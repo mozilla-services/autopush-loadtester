@@ -42,7 +42,7 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": [],
         }, run=False)
         d = Deferred()
-        reactor.callLater(0.5, self._check_done, h, d)
+        reactor.callLater(0, self._check_done, h, d)
         return d
 
     def test_basic_testplan(self):
@@ -52,7 +52,7 @@ class TestIntegration(unittest.TestCase):
             "TEST_PLAN": "aplt.scenarios:basic, 5, 5, 0",
         }, run=False)
         d = Deferred()
-        reactor.callLater(0.5, self._check_testplan_done, lh, d)
+        reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
 
     def test_basic_testplan_with_args(self):
@@ -62,7 +62,7 @@ class TestIntegration(unittest.TestCase):
             "TEST_PLAN": "aplt.scenarios:basic_forever, 5, 5, 0, 1, 1",
         }, run=False)
         d = Deferred()
-        reactor.callLater(0.5, self._check_testplan_done, lh, d)
+        reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
 
     def test_wait_twice(self):
@@ -72,7 +72,7 @@ class TestIntegration(unittest.TestCase):
             "TEST_PLAN": "aplt.tests:_wait_multiple, 1, 1, 0",
         }, run=False)
         d = Deferred()
-        reactor.callLater(0.5, self._check_testplan_done, lh, d)
+        reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
 
     @raises(Exception)
@@ -100,7 +100,7 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
         d = Deferred()
-        reactor.callLater(3, self._check_done, h, d)
+        reactor.callLater(0, self._check_done, h, d)
         return d
 
     def test_reconnect_forever(self):
@@ -111,8 +111,29 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
         d = Deferred()
-        reactor.callLater(3, self._check_done, h, d)
+        reactor.callLater(0, self._check_done, h, d)
         return d
+
+    def test_exception_restart(self):
+        import aplt.runner as runner
+        import aplt.scenarios as scenarios
+        scenarios._RESTARTS = 0
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:_explode",
+            "SCENARIO_ARGS": [],
+        }, run=False)
+        f = Deferred()
+        d = Deferred()
+        eq_(scenarios._RESTARTS, 0)
+
+        def check_restarts(result):
+            self.flushLoggedErrors()
+            eq_(scenarios._RESTARTS, 3)
+            f.callback(True)
+        d.addBoth(check_restarts)
+        reactor.callLater(0, self._check_done, h, d)
+        return f
 
 
 class TestHarness(unittest.TestCase):
