@@ -16,6 +16,7 @@ from aplt.commands import (
     timer_end,
     counter,
     wait,
+    spawn,
 )
 from aplt.decorators import restart
 
@@ -116,3 +117,7 @@ def _explode():
     yield connect()
     _RESTARTS += 1
     yield connect()
+
+
+def _test_spawn():
+    yield spawn("aplt.scenarios:basic, 1, 1, 0")

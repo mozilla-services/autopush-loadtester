@@ -13,13 +13,6 @@ def _wait_multiple():
 
 
 class TestIntegration(unittest.TestCase):
-    def _check_done(self, harness, d):
-        if not harness._processors:
-            harness.metrics.stop()
-            d.callback(True)
-        else:
-            reactor.callLater(0.5, self._check_done, harness, d)
-
     def _check_testplan_done(self, load_runner, d):
         if load_runner.finished:
             load_runner.metrics.stop()
@@ -42,7 +35,7 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": [],
         }, run=False)
         d = Deferred()
-        reactor.callLater(0, self._check_done, h, d)
+        reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
     def test_basic_testplan(self):
@@ -53,6 +46,17 @@ class TestIntegration(unittest.TestCase):
         }, run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
+        return d
+
+    def test_spawn_testplan(self):
+        import aplt.runner as runner
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:_test_spawn",
+            "SCENARIO_ARGS": [],
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(3, self._check_testplan_done, h, d)
         return d
 
     def test_basic_testplan_with_args(self):
@@ -100,7 +104,7 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
         d = Deferred()
-        reactor.callLater(0, self._check_done, h, d)
+        reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
     def test_reconnect_forever(self):
@@ -111,7 +115,7 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
         d = Deferred()
-        reactor.callLater(0, self._check_done, h, d)
+        reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
     def test_exception_restart(self):
@@ -132,7 +136,7 @@ class TestIntegration(unittest.TestCase):
             eq_(scenarios._RESTARTS, 3)
             f.callback(True)
         d.addBoth(check_restarts)
-        reactor.callLater(0, self._check_done, h, d)
+        reactor.callLater(0, self._check_testplan_done, h, d)
         return f
 
 
@@ -141,8 +145,8 @@ class TestHarness(unittest.TestCase):
         from aplt.runner import RunnerHarness, parse_statsd_args
         from aplt.scenarios import basic
         client = parse_statsd_args({})
-        self.rh = RunnerHarness("wss://autopush-dev.stage.mozaws.net/", basic,
-                                client)
+        self.rh = RunnerHarness(Mock(), "wss://autopush-dev.stage.mozaws.net/",
+                                basic, client)
         self.rh.metrics = client
         return self.rh
 

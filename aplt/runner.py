@@ -34,7 +34,8 @@ class RunnerHarness(object):
     will run to completion or possibly forever.
 
     """
-    def __init__(self, websocket_url, statsd_client, scenario, *scenario_args):
+    def __init__(self, load_runner, websocket_url, statsd_client, scenario,
+                 *scenario_args):
         self._factory = WebSocketClientFactory(
             websocket_url,
             headers={"Origin": "localhost:9000"},
@@ -56,6 +57,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         self._processors = 0
         self._ws_clients = {}
         self._connect_waiters = deque()
+        self._load_runner = load_runner
         self._stat_client = statsd_client
 
     def run(self):
@@ -64,6 +66,10 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         processor = CommandProcessor(self._scenario, self._scenario_args, self)
         processor.run()
         self._processors += 1
+
+    def spawn(self, test_plan):
+        """Spawn a new test plan"""
+        self._load_runner.spawn(test_plan)
 
     def connect(self, processor):
         """Start a connection for a processor and queue it for when the
@@ -141,7 +147,7 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
 
 class LoadRunner(object):
         """Runs a bunch of scenarios for a load-test"""
-        def __init__(self, scenario_list, statsd_client):
+        def __init__(self, scenario_list, statsd_client, websocket_url):
             """Initializes a LoadRunner
 
             Takes a list of tuples indicating scenario to run, quantity,
@@ -157,7 +163,7 @@ class LoadRunner(object):
 
                 lr = LoadRunner([
                     (basic, 1000, 100, 0, *scenario_args),
-                ])
+                ], "wss://somepushservice/")
 
             .. note::
 
@@ -171,23 +177,29 @@ class LoadRunner(object):
             self._started = False
             self._queued_calls = 0
             self._statsd_client = statsd_client
+            self._websocket_url = websocket_url
 
-        def start(self, websocket_url):
+        def start(self):
             """Schedules all the scenarios supplied"""
-            for scenario, quantity, stagger, overall_delay, scenario_args \
-                    in self._testplans:
-                harness = RunnerHarness(websocket_url, self._statsd_client,
-                                        scenario, *scenario_args)
-                self._harnesses.append(harness)
-                iterations = quantity / stagger
-                for delay in range(iterations):
-                    def runall():
-                        for _ in range(stagger):
-                            harness.run()
-                        self._queued_calls -= 1
-                    self._queued_calls += 1
-                    reactor.callLater(overall_delay+delay, runall)
+            for testplan in self._testplans:
+                self._run_testplan(testplan)
             self._started = True
+
+        def _run_testplan(self, test_plan):
+            scenario, quantity, stagger, overall_delay, scenario_args = \
+                test_plan
+            harness = RunnerHarness(self, self._websocket_url,
+                                    self._statsd_client, scenario,
+                                    *scenario_args)
+            self._harnesses.append(harness)
+            iterations = quantity / stagger
+            for delay in range(iterations):
+                def runall():
+                    for _ in range(stagger):
+                        harness.run()
+                    self._queued_calls -= 1
+                self._queued_calls += 1
+                reactor.callLater(overall_delay+delay, runall)
 
         @property
         def finished(self):
@@ -198,6 +210,11 @@ class LoadRunner(object):
                 self._queued_calls == 0,
                 all([x._processors == 0 for x in self._harnesses])
             ])
+
+        def spawn(self, test_plan):
+            """Spawn a new test plan"""
+            testplans = parse_testplan(test_plan)
+            self._run_testplan(testplans[0])
 
 
 def check_processors(harness):
@@ -332,18 +349,22 @@ def run_scenario(args=None, run=True):
     statsd_client = parse_statsd_args(arguments)
     scenario_args = try_int_list_coerce(arguments["SCENARIO_ARGS"])
     verify_arguments(scenario, *scenario_args)
-    h = RunnerHarness(arguments["WEBSOCKET_URL"], statsd_client, scenario,
-                      *scenario_args)
-    h.metrics = statsd_client
+
+    plan = tuple([scenario, 1, 1, 0] + [tuple(scenario_args)])
+    testplans = [plan]
+
+    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"])
+    log.startLogging(sys.stdout)
     statsd_client.start()
-    h.run()
+    lh.metrics = statsd_client
+    lh.start()
 
     if run:
-        l = task.LoopingCall(check_processors, h)
+        l = task.LoopingCall(check_loadrunner, lh)
         reactor.callLater(1, l.start, 1)
         reactor.run()
     else:
-        return h
+        return lh
 
 
 def run_testplan(args=None, run=True):
@@ -384,11 +405,11 @@ def run_testplan(args=None, run=True):
     arguments = args or docopt(run_testplan.__doc__, version=__version__)
     testplans = parse_testplan(arguments["TEST_PLAN"])
     statsd_client = parse_statsd_args(arguments)
-    lh = LoadRunner(testplans, statsd_client)
+    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"])
     log.startLogging(sys.stdout)
     statsd_client.start()
     lh.metrics = statsd_client
-    lh.start(arguments["WEBSOCKET_URL"])
+    lh.start()
 
     if run:
         l = task.LoopingCall(check_loadrunner, lh)
