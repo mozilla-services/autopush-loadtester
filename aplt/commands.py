@@ -58,6 +58,10 @@ class counter(namedtuple("Counter", "name count")):
     pass
 
 
+class spawn(namedtuple("Spawn", "test_plan")):
+    pass
+
+
 # Helper functions to use with commands
 def random_channel_id():
     return uuid.uuid4().hex

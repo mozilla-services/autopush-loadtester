@@ -44,6 +44,7 @@ yielded, and any client connections should be considered invalid.
 
 Full list of commands available in `aplt.commands` module:
 
+* [spawn](#spawn)
 * [connect](#connect)
 * [disconnect](#disconnect)
 * [hello](#hello)
@@ -63,6 +64,19 @@ a `yield`):
 * [random_channel_id](#random_channel_id)
 * [random_data](#random_data)
 
+
+### spawn
+
+Spawns a scenario using a new LoadRunner. The ``test_plan`` should be provided
+in the same format as ``aplt_testplan`` accepts.
+
+**Arguments:** `test_plan`
+
+```python
+yield spawn("aplt.scenarios:reconnect_forever, 1, 1, 0, 200")
+```
+
+**Returns:** ``None``
 
 ### connect
 

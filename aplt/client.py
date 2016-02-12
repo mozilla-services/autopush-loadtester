@@ -38,7 +38,7 @@ class WSClientProtocol(WebSocketClientProtocol):
 
 class CommandProcessor(object, policies.TimeoutMixin):
     """Created per Virtual Client to run a client scenario"""
-    valid_commands = ["connect", "disconnect", "register", "hello",
+    valid_commands = ["spawn", "connect", "disconnect", "register", "hello",
                       "unregister", "send_notification", "expect_notification",
                       "ack", "wait", "timer_start", "timer_end", "counter"]
     valid_handlers = ["connect", "disconnect", "error", "hello",
@@ -128,6 +128,11 @@ class CommandProcessor(object, policies.TimeoutMixin):
             command_func(command)
         except:
             self._send_exception()
+
+    def spawn(self, command):
+        """Spawn a new test plan"""
+        self._harness.spawn(command.test_plan)
+        self._send_command_result(None)
 
     def connect(self, command):
         """Run the connect command to start the websocket connection"""
