@@ -93,7 +93,8 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
                 },
                 allow_redirects=False)
         else:
-            d = treq.post(url, allow_redirects=False)
+            d = treq.post(url, headers={"TTL": str(ttl)},
+                          allow_redirects=False)
         d.addCallback(self._sent_notification, processor)
         d.addErrback(self._error_notif, processor)
 
