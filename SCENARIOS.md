@@ -124,7 +124,7 @@ Sends a hello message to the server.
 ```python
 yield hello(None)
 # or
-yield hello("bf9cb2334849438293484b16c4ff2fc0")
+yield hello("f807ecd7-1bd8-4b62-8027-120f18531b01")
 ```
 
 **Returns:**
@@ -134,7 +134,7 @@ yield hello("bf9cb2334849438293484b16c4ff2fc0")
     "status": 200,
     "messageType": "hello",
     "ping": 60.0,
-    "uaid": "bf9cb2334849438293484b16c4ff2fc0",
+    "uaid": "f807ecd7-1bd8-4b62-8027-120f18531b01",
     "use_webpush": True
 }
 ```
@@ -146,7 +146,7 @@ Register a channel with the push server.
 **Arguments:** A channel ID.
 
 ```python
-yield register("a15952b1b07d4fffa4db0318a8678105")
+yield register("ef4e3d8b-9ecb-4de7-a909-56d9acd60a42")
 ```
 
 **Returns:**
@@ -155,7 +155,7 @@ yield register("a15952b1b07d4fffa4db0318a8678105")
 {
     'status': 200,
     'messageType': 'register',
-    'channelID': 'a15952b1b07d4fffa4db0318a8678105',
+    'channelID': 'ef4e3d8b-9ecb-4de7-a909-56d9acd60a42',
     'pushEndpoint': 'BIG_URL'
 }
 ```
@@ -167,7 +167,7 @@ Remove a channel from the push server.
 **Arguments:** A channel ID.
 
 ```python
-yield unregister("1913165ea4104f1482ee440cedac6abd")
+yield unregister("ad6a1337-748a-437b-9957-6895f24796a9")
 ```
 
 **Returns:**
@@ -176,7 +176,7 @@ yield unregister("1913165ea4104f1482ee440cedac6abd")
 {
     'messageType': 'unregister',
     'status': 200,
-    'channelID': '1913165ea4104f1482ee440cedac6abd',
+    'channelID': 'ad6a1337-748a-437b-9957-6895f24796a9',
 }
 ```
 
@@ -213,7 +213,7 @@ yield expect_notification("1913165ea4104f1482ee440cedac6abd", 5)
 {
     'messageType': 'notification',
     'version': 'LONG_VERSION_STRING',
-    'channelID': '1913165ea4104f1482ee440cedac6abd'
+    'channelID': 'ad6a1337-748a-437b-9957-6895f24796a9'
 }
 ```
 
@@ -225,7 +225,7 @@ notifications until sent ones are acknowledged.
 **Arguments:** `channel_id`, `version`
 
 ```python
-yield ack("1913165ea4104f1482ee440cedac6abd", "LONG_VERSION_STRING")
+yield ack("ad6a1337-748a-437b-9957-6895f24796a9", "LONG_VERSION_STRING")
 ```
 
 **Returns:** `None`
