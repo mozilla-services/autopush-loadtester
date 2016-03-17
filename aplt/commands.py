@@ -64,7 +64,7 @@ class spawn(namedtuple("Spawn", "test_plan")):
 
 # Helper functions to use with commands
 def random_channel_id():
-    return uuid.uuid4().hex
+    return str(uuid.uuid4())
 
 
 def random_data(min_length, max_length=4096):
