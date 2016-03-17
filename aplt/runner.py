@@ -1,4 +1,5 @@
 """Scenario Runner"""
+import logging
 import importlib
 import inspect
 import sys
@@ -38,8 +39,7 @@ class RunnerHarness(object):
                  *scenario_args):
         self._factory = WebSocketClientFactory(
             websocket_url,
-            headers={"Origin": "localhost:9000"},
-            debug=False)
+            headers={"Origin": "localhost:9000"})
         self._factory.protocol = WSClientProtocol
         self._factory.protocol.harness = self
         if websocket_url.startswith("wss"):
@@ -355,7 +355,9 @@ def run_scenario(args=None, run=True):
     testplans = [plan]
 
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"])
-    log.startLogging(sys.stdout)
+    observer = log.PythonLoggingObserver()
+    observer.start()
+    logging.basicConfig(level=logging.INFO)
     statsd_client.start()
     lh.metrics = statsd_client
     lh.start()
@@ -407,7 +409,9 @@ def run_testplan(args=None, run=True):
     testplans = parse_testplan(arguments["TEST_PLAN"])
     statsd_client = parse_statsd_args(arguments)
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"])
-    log.startLogging(sys.stdout)
+    observer = log.PythonLoggingObserver()
+    observer.start()
+    logging.basicConfig(level=logging.INFO)
     statsd_client.start()
     lh.metrics = statsd_client
     lh.start()

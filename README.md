@@ -8,7 +8,7 @@ autopush deployments under various load conditions.
 
 ## Getting Started
 
-`ap-loadtester` uses PyPy 4.0.1 which can be downloaded here:
+`ap-loadtester` uses PyPy 5.0 which can be downloaded here:
 http://pypy.org/download.html
 
 You will also need virtualenv installed on your system to setup a virtualenv for
@@ -17,13 +17,13 @@ could then setup the loadtester for use with the following commands:
 
 **Linux:**
 
-    $ tar xjvf pypy-4.0.1-linux64.tar.bz2
-    $ virtualenv -p pypy-4.0.1-linux64/bin/pypy apenv
+    $ tar xjvf pypy-5.0.0-linux64.tar.bz2
+    $ virtualenv -p pypy-5.0.0-linux64/bin/pypy apenv
 
 **OSX:**
 
-    $ tar xjvf pypy-4.0.1-osx64.tar.bz2
-    $ virtualenv -p pypy-4.0.1-osx64/bin/pypy apenv
+    $ tar xjvf pypy-5.0.0-osx64.tar.bz2
+    $ virtualenv -p pypy-5.0.0-osx64/bin/pypy apenv
 
 **Activate Virtualenv:**
 
