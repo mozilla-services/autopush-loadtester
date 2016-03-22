@@ -241,9 +241,10 @@ def locate_function(func_name):
     """
     if ":" not in func_name:
         raise Exception("Missing function designation")
-    mod, func_name = func_name.split(":")
-    module = importlib.import_module(mod)
-    scenario = getattr(module, func_name)
+    module_path, object_path = func_name.split(":")
+    scenario = importlib.import_module(module_path)
+    for bit in object_path.split("."):
+        scenario = getattr(scenario, bit)
     return scenario
 
 
@@ -251,6 +252,10 @@ def verify_arguments(func, *func_args):
     """Verify that a function can be called with the arguments supplied"""
     args, varargs, keywords, defaults = inspect.getargspec(func)
     arg_len = len(func_args)
+
+    # If its a class method, one less required args
+    if hasattr(func, "__self__") and func.__self__ is not None:
+        args = args[1:]
 
     # First, check the minimum required arg length
     defaults = defaults or []

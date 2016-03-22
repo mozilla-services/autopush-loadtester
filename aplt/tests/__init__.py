@@ -18,6 +18,12 @@ def _stack_gens():
     yield wait(0.1)
 
 
+class Aclass(object):
+    @classmethod
+    def amethod(cls):
+        yield _wait_multiple()
+
+
 class TestIntegration(unittest.TestCase):
     def _check_testplan_done(self, load_runner, d):
         if load_runner.finished:
@@ -90,6 +96,16 @@ class TestIntegration(unittest.TestCase):
         lh = runner.run_testplan({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "TEST_PLAN": "aplt.tests:_stack_gens, 1, 1, 0",
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0, self._check_testplan_done, lh, d)
+        return d
+
+    def test_class_method(self):
+        import aplt.runner as runner
+        lh = runner.run_testplan({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "TEST_PLAN": "aplt.tests:Aclass.amethod, 1, 1, 0",
         }, run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
