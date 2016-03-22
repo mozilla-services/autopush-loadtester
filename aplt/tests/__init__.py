@@ -12,6 +12,12 @@ def _wait_multiple():
     yield wait(0.1)
 
 
+def _stack_gens():
+    from aplt.commands import wait
+    yield _wait_multiple()
+    yield wait(0.1)
+
+
 class TestIntegration(unittest.TestCase):
     def _check_testplan_done(self, load_runner, d):
         if load_runner.finished:
@@ -74,6 +80,16 @@ class TestIntegration(unittest.TestCase):
         lh = runner.run_testplan({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "TEST_PLAN": "aplt.tests:_wait_multiple, 1, 1, 0",
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0, self._check_testplan_done, lh, d)
+        return d
+
+    def test_stack_gens(self):
+        import aplt.runner as runner
+        lh = runner.run_testplan({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "TEST_PLAN": "aplt.tests:_stack_gens, 1, 1, 0",
         }, run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)

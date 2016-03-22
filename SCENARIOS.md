@@ -9,6 +9,9 @@ executed. Any additional logic the scenario wishes to perform can be done with
 normal Python code. All commands are tuples, some of which return responses as
 documented below.
 
+A scenario can also yield generators so that a scenario may be broken into
+multiple functions for re-use.
+
 Responses from a command can be assigned to a variable:
 
 ```python
