@@ -5,9 +5,11 @@ Handles interactions on behalf of a single client.
 """
 import json
 import time
+import types
 import sys
 
 from autobahn.twisted.websocket import WebSocketClientProtocol
+from twisted.internet import reactor
 from twisted.protocols import policies
 from twisted.python import log
 
@@ -56,7 +58,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
     def _reset(self):
         """Reset for a startover or initialization"""
         # Setup the scenario
-        self._scenario = self._scenario_func(*self._scenario_args)
+        self._scenario = [self._scenario_func(*self._scenario_args)]
 
         # Command processing
         self._last_command = None
@@ -74,7 +76,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
 
     def run(self):
         """Start the scenario"""
-        self._run_safely(lambda: self._scenario.next())
+        self._run_safely(lambda: self._scenario[-1].next())
 
     def shutdown(self, ended):
         """Shutdown the scenario after it's over, if needed"""
@@ -88,7 +90,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
             self.run()
 
     def _send_command_result(self, result):
-        self._run_safely(lambda: self._scenario.send(result))
+        self._run_safely(lambda: self._scenario[-1].send(result))
 
     def _send_exception(self):
         """Send the current exception being handled into a generator and drop
@@ -103,19 +105,27 @@ class CommandProcessor(object, policies.TimeoutMixin):
             self._ws_client = None
 
         def throw():
-            self._scenario.throw(*sys.exc_info())
+            self._scenario[-1].throw(*sys.exc_info())
         self._run_safely(throw)
 
     def _run_safely(self, func, throw=False):
         try:
             self._run_command(func())
         except StopIteration:
-            self.shutdown(ended=True)
+            if len(self._scenario) == 1:
+                self.shutdown(ended=True)
+            else:
+                self._scenario.pop()
+                reactor.callLater(0, self._send_command_result, None)
         except:
             log.err()
             self.shutdown(ended=False)
 
     def _run_command(self, command):
+        if isinstance(command, types.GeneratorType):
+            self._scenario.append(command)
+            reactor.callLater(0, self.run)
+            return
         log.msg("Running command: ", command)
         command_name = command.__class__.__name__
         if command_name not in self.valid_commands:
