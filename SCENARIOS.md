@@ -186,13 +186,31 @@ yield unregister("ad6a1337-748a-437b-9957-6895f24796a9")
 ### send_notification
 
 Send a notification to the push service. If an empty data payload is desired,
-`None` can be used for `data`.
+`None` can be used for `data`. If VAPID headers are desired, include a
+valid `claims` dict.
 
-**Arguments:** `endpoint_url`, `data`, `ttl`
+**Arguments:** `endpoint_url`, `data`, `ttl`, `claims`
 
 ```python
-yield send_notification('BIG_URL', 'SOME_DATA', 60)
+yield send_notification('BIG_URL', 'SOME_DATA', 60,
+{aud:"https://example.com", sub,"mailto:admin@example.com",
+exp:1459803905})
 ```
+*Claims* is a JSON blob containing the following:
+
+`aud` - The owning URL for the subscription; This is the main URL for
+the site that publishes the subscription. (e.g. If a user has
+subscribed to Push Notifications from "Example.com", the `aud` could
+be `https://example.com`)
+
+`sub` - The email address of the administrative contact for the
+subscription.  (e.g. for the above `aud` the address for the
+administrative contact could be `mailto: admin-push@example.com`)
+
+`exp` - The expiration time expressed in UTC seconds for the VAPID
+information block. Expired VAPID blocks are considered invalid and
+will be rejected.
+
 
 **Returns:** A tuple of (`response`, `content`) corresponding to the result of
              the notification web request. `response` is a [treq response object](http://treq.readthedocs.org/en/latest/api.html#treq.response.Response)

@@ -2,6 +2,8 @@
 import logging
 import importlib
 import inspect
+import json
+import re
 import sys
 from collections import deque
 
@@ -19,6 +21,7 @@ from aplt.client import (
     CommandProcessor,
     WSClientProtocol
 )
+from aplt.vapid import Vapid
 import aplt.metrics as metrics
 
 # Necessary for latest version of txaio
@@ -36,7 +39,7 @@ class RunnerHarness(object):
 
     """
     def __init__(self, load_runner, websocket_url, statsd_client, scenario,
-                 *scenario_args):
+                 *scenario_args, **scenario_kw):
         self._factory = WebSocketClientFactory(
             websocket_url,
             headers={"Origin": "localhost:9000"})
@@ -54,11 +57,22 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         # Processor and Websocket client vars
         self._scenario = scenario
         self._scenario_args = scenario_args
+        self._scenario_kw = scenario_kw
         self._processors = 0
         self._ws_clients = {}
         self._connect_waiters = deque()
         self._load_runner = load_runner
         self._stat_client = statsd_client
+        self._vapid = Vapid()
+        if "vapid_private_key" in self._scenario_kw:
+            self._vapid = Vapid(
+                private_key=self._scenario_kw.get(
+                    "vapid_private_key"))
+        else:
+            self._vapid.generate_keys()
+        self._claims = None
+        if "vapid_claims" in self._scenario_kw:
+            self._claims = self._scenario_kw.get("vapid_claims")
 
     def run(self):
         """Start registered scenario"""
@@ -77,24 +91,24 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         self._connect_waiters.append(processor)
         connectWS(self._factory, contextFactory=self._factory_context)
 
-    def send_notification(self, processor, url, data, ttl):
+    def send_notification(self, processor, url, data, ttl, claims=None):
         """Send out a notification to a url for a processor"""
         url = url.encode("utf-8")
+        headers = {"TTL": str(ttl)}
+        claims = claims or self._claims
+        if self._vapid and claims:
+            headers.update(self._vapid.sign(claims))
         if data:
-            d = treq.post(
-                url,
-                data,
-                headers={
-                    "Content-Type": "application/octet-stream",
-                    "Content-Encoding": "aesgcm-128",
-                    "Encryption": self._crypto_key,
-                    "Encryption-Key": "Invalid-Key-Used-Here",
-                    "TTL": str(ttl),
-                },
-                allow_redirects=False)
-        else:
-            d = treq.post(url, headers={"TTL": str(ttl)},
-                          allow_redirects=False)
+            headers.update({
+                "Content-Type": "application/octet-stream",
+                "Content-Encoding": "aesgcm-128",
+                "Encryption": self._crypto_key,
+                "Encryption-Key": "Invalid-Key-Used-Here",
+            })
+        d = treq.post(url,
+                      data=data,
+                      headers=headers,
+                      allow_redirects=False)
         d.addCallback(self._sent_notification, processor)
         d.addErrback(self._error_notif, processor)
 
@@ -191,7 +205,7 @@ class LoadRunner(object):
                 test_plan
             harness = RunnerHarness(self, self._websocket_url,
                                     self._statsd_client, scenario,
-                                    *scenario_args)
+                                    *scenario_args[0], **scenario_args[1])
             self._harnesses.append(harness)
             iterations = quantity / stagger
             for delay in range(iterations):
@@ -248,7 +262,7 @@ def locate_function(func_name):
     return scenario
 
 
-def verify_arguments(func, *func_args):
+def verify_arguments(func, *func_args, **func_kwargs):
     """Verify that a function can be called with the arguments supplied"""
     args, varargs, keywords, defaults = inspect.getargspec(func)
     arg_len = len(func_args)
@@ -280,7 +294,7 @@ def try_int_list_coerce(lst):
     for p in lst:
         try:
             new_lst.append(int(p))
-        except ValueError:
+        except (ValueError, TypeError):
             new_lst.append(p)
     return new_lst
 
@@ -296,19 +310,24 @@ def parse_testplan(testplan):
             raise Exception("Error parsing test plan. Plan for %s needs 3 "
                             "arguments, only got: %s" % (func_name, parts))
         func = locate_function(func_name)
-        int_args = try_int_list_coerce(parts)
+        # command line args come in as strings.
+        int_args, kw_args = group_kw_args(parts)
+        int_args = try_int_list_coerce(int_args)
         func_args = int_args[3:]
-        verify_arguments(func, *func_args)
+        verify_arguments(func, *func_args, **kw_args)
         args = [func] + int_args[:3]
-        args.append(tuple(func_args))
+        args.append((func_args, kw_args))
         result.append(tuple(args))
     return result
 
 
 def parse_string_to_list(string):
     """Parse a string into a list of strings"""
+    # pull objects
     if string:
-        return [x.strip() for x in string.strip().split(",")]
+        string = re.sub("(?<!\\\\),", "\0", string)
+        items = [x.strip() for x in string.strip().split("\0")]
+        return items
     else:
         return []
 
@@ -335,6 +354,23 @@ def parse_statsd_args(args):
         return metrics.SinkMetrics()
 
 
+def group_kw_args(*args):
+    """Divvy up argument hashes and single values into args and kwargs."""
+    kw_args = {}
+    argList = []
+    # args may contain a list of items (e.g. (['1', '0'],)
+    for a in args:
+        for p in a:
+            if isinstance(p, str) and p[0] == '{':
+                kw_args.update(json.loads(p.replace("\\,", ",")))
+                continue
+            if isinstance(p, dict):
+                kw_args.update(p)
+                continue
+            argList.append(p)
+    return argList, kw_args
+
+
 def run_scenario(args=None, run=True):
     """Run a scenario
 
@@ -353,10 +389,11 @@ def run_scenario(args=None, run=True):
     scenario = locate_function(arg)
     log.startLogging(sys.stdout)
     statsd_client = parse_statsd_args(arguments)
-    scenario_args = try_int_list_coerce(arguments["SCENARIO_ARGS"])
-    verify_arguments(scenario, *scenario_args)
+    scenario_args, scenario_kw = group_kw_args(arguments["SCENARIO_ARGS"])
+    scenario_args = try_int_list_coerce(scenario_args)
+    verify_arguments(scenario, *scenario_args, **scenario_kw)
 
-    plan = tuple([scenario, 1, 1, 0] + [tuple(scenario_args)])
+    plan = ([scenario, 1, 1, 0] + [(scenario_args, scenario_kw)])
     testplans = [plan]
 
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"])

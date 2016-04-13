@@ -1,3 +1,6 @@
+import json
+import time
+
 from mock import Mock, patch
 from nose.tools import eq_, raises
 from twisted.internet import reactor
@@ -50,6 +53,51 @@ class TestIntegration(unittest.TestCase):
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
+    def test_basic_with_vapid(self):
+        import aplt.runner as runner
+        from aplt.tests.test_vapid import T_PRIVATE
+        claims = {"aud": "https://example.com",
+                  "sub": "mailto:admin@example.com",
+                  "exp": int(time.time()) + 86400}
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:basic",
+            "SCENARIO_ARGS": [{"vapid_private_key": T_PRIVATE,
+                               "vapid_claims": claims}],
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0, self._check_testplan_done, h, d)
+        return d
+
+    def test_basic_with_vapid_str_args(self):
+        """Test common format for command line arguments
+
+        Command line tests should escape commas in the keyword args,
+        e.g.
+
+        ```
+        ARGS='{"vapid_private_key":"MHc..."\\,"vapid_claims":{...}}'
+        aplt_testplan $HOST "aplt.scenarios:basic,1,1,0,$ARGS"
+        ```
+
+        """
+        import aplt.runner as runner
+        from aplt.tests.test_vapid import T_PRIVATE
+        claims = {"aud": "https://example.com",
+                  "sub": "mailto:admin@example.com",
+                  "exp": int(time.time()) + 86400}
+        args = {"vapid_private_key": T_PRIVATE,
+                "vapid_claims": claims}
+        jclaims = json.dumps(args).replace(",", "\\,")
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:basic",
+            "SCENARIO_ARGS": [jclaims],
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0, self._check_testplan_done, h, d)
+        return d
+
     def test_basic_testplan(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
@@ -76,6 +124,20 @@ class TestIntegration(unittest.TestCase):
         lh = runner.run_testplan({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
             "TEST_PLAN": "aplt.scenarios:basic_forever, 5, 5, 0, 1, 1",
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0, self._check_testplan_done, lh, d)
+        return d
+
+    def test_basic_testplan_with_vapid(self):
+        import aplt.runner as runner
+        lh = runner.run_testplan({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "TEST_PLAN": "aplt.scenarios:basic_forever, 5, 5, 0, 1, 1",
+            "SCENARIO_KWARGS": {'vapid_claims': {
+                "aud": "https://example.com",
+                "sub": "mailto:admin@example.com",
+                "exp": int(time.time()) + 86400}},
         }, run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
@@ -205,8 +267,8 @@ class TestRunnerFunctions(unittest.TestCase):
     @raises(Exception)
     def test_verify_func_too_many_args(self):
         from aplt.runner import verify_arguments
-        from aplt.scenarios import basic
-        verify_arguments(basic, "extra_arg")
+        from aplt.scenarios import connect_and_idle_forever
+        verify_arguments(connect_and_idle_forever, "extra_arg")
 
     @raises(Exception)
     def test_verify_func_short_an_arg(self):
