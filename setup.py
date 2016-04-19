@@ -21,6 +21,8 @@ setup(
         "pyOpenSSL>=0.15.1",
         "txaio==2.2.2",
         "txStatsD==1.0.0",
+        "ecdsa==0.13",
+        "python-jose==0.6.1",
     ],
     entry_points="""
     [console_scripts]

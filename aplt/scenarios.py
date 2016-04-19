@@ -21,7 +21,7 @@ from aplt.commands import (
 from aplt.decorators import restart
 
 
-def basic():
+def basic(*args):
     """Connects, sends a notification, than disconnects"""
     yield connect()
     yield hello(None)
