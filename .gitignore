@@ -4,6 +4,8 @@
 apenv
 pypy*
 dist/*
+build/*
 .tox/
 coverage.xml
 .coverage
+.python-version

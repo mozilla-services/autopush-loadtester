@@ -191,7 +191,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
             return self._send_command_result(notif)
 
         # If we're already expecting a notification, the timeout is set
-        # already. This can occur when we're called for an incoming client
+        # already. This can occur when we've called for an incoming client
         # message vs. a command run from a yield.
         if self._expecting:
             return

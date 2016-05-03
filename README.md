@@ -52,7 +52,7 @@ Run the basic scenario against the dev server:
 Run 5 instances of the basic scenario, starting one every second, against the
 dev server:
 
-    $ aplt_testplan wss://autopush-dev.stage.mozaws.net/ "aplt.scenarios:basic 5 1 0"
+    $ aplt_testplan wss://autopush-dev.stage.mozaws.net/ "aplt.scenarios:basic,5,1,0"
 
 Either of these scripts can be run with `-h` for full help documentation.
 

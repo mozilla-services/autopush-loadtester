@@ -123,7 +123,7 @@ class TestIntegration(unittest.TestCase):
         import aplt.runner as runner
         lh = runner.run_testplan({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
-            "TEST_PLAN": "aplt.scenarios:basic_forever, 5, 5, 0, 1, 1",
+            "TEST_PLAN": "aplt.scenarios:notification_forever, 5, 5, 0, 1, 1",
         }, run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
@@ -133,7 +133,8 @@ class TestIntegration(unittest.TestCase):
         import aplt.runner as runner
         lh = runner.run_testplan({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
-            "TEST_PLAN": "aplt.scenarios:basic_forever, 5, 5, 0, 1, 1",
+            "TEST_PLAN":
+                "aplt.scenarios:notification_forever, 5, 5, 0, 1, 1",
             "SCENARIO_KWARGS": {'vapid_claims': {
                 "aud": "https://example.com",
                 "sub": "mailto:admin@example.com",
@@ -190,11 +191,11 @@ class TestIntegration(unittest.TestCase):
             "SCENARIO_ARGS": "",
         }, run=False)
 
-    def test_basic_forever(self):
+    def test_notification_forever(self):
         import aplt.runner as runner
         h = runner.run_scenario({
             "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
-            "SCENARIO_FUNCTION": "aplt.scenarios:basic_forever",
+            "SCENARIO_FUNCTION": "aplt.scenarios:notification_forever",
             "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
         d = Deferred()
