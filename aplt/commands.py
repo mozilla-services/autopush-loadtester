@@ -38,6 +38,11 @@ class expect_notification(namedtuple("ExpectNotification", "channel_id time")):
     pass
 
 
+class expect_notifications(namedtuple("ExpectNotifications",
+                                      "channel_ids time")):
+    pass
+
+
 class ack(namedtuple("Ack", "channel_id version")):
     pass
 

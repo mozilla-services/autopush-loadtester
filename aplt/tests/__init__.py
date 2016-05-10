@@ -213,6 +213,17 @@ class TestIntegration(unittest.TestCase):
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
+    def test_expect_notifications(self):
+        import aplt.runner as runner
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:_expect_notifications",
+            "SCENARIO_ARGS": [],
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(0, self._check_testplan_done, h, d)
+        return d
+
     def test_exception_restart(self):
         import aplt.runner as runner
         import aplt.scenarios as scenarios

@@ -42,7 +42,8 @@ class CommandProcessor(object, policies.TimeoutMixin):
     """Created per Virtual Client to run a client scenario"""
     valid_commands = ["spawn", "connect", "disconnect", "register", "hello",
                       "unregister", "send_notification", "expect_notification",
-                      "ack", "wait", "timer_start", "timer_end", "counter"]
+                      "expect_notifications", "ack", "wait", "timer_start",
+                      "timer_end", "counter"]
     valid_handlers = ["connect", "disconnect", "error", "hello",
                       "notification", "register", "unregister"]
 
@@ -197,7 +198,24 @@ class CommandProcessor(object, policies.TimeoutMixin):
             return
 
         # Notification not found, set a timeout waiting for it
-        self._expecting = command
+        self._expecting = lambda: self.expect_notification(command)
+        self.setTimeout(command.time)
+
+    def expect_notifications(self, command):
+        """Expect one of many notifications, if one has already arrived that
+        is in the set then act on that"""
+        if self._notifications:
+            for idx, notif in enumerate(self._notifications):
+                if notif["channelID"] in command.channel_ids:
+                    self._notifications.pop(idx)
+                    self._expecting = None
+                    self.setTimeout(None)
+                    return self._send_command_result(notif)
+
+        if self._expecting:
+            return
+
+        self._expecting = lambda: self.expect_notifications(command)
         self.setTimeout(command.time)
 
     def wait(self, command):
@@ -273,7 +291,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
             self._notifications.append(data)
             # If we are expecting, trigger it to check
             if self._expecting:
-                self.expect_notification(self._expecting)
+                self._expecting()
             return
 
         if self._last_command != message_type:
