@@ -55,6 +55,7 @@ Full list of commands available in `aplt.commands` module:
 * [unregister](#unregister)
 * [send_notification](#send_notification)
 * [expect_notification](#expect_notification)
+* [expect_notifications](#expect_notifications)
 * [ack](#ack)
 * [wait](#wait)
 * [timer_start](#timer_start)
@@ -225,6 +226,33 @@ Wait on the websocket connection for an expected notification to be delivered.
 
 ```python
 yield expect_notification("1913165ea4104f1482ee440cedac6abd", 5)
+```
+
+**Returns:** `None` if the timeout was hit, or the following if the expected
+             notification arrived.
+
+```python
+{
+    'messageType': 'notification',
+    'version': 'LONG_VERSION_STRING',
+    'channelID': 'ad6a1337-748a-437b-9957-6895f24796a9'
+}
+```
+
+### expect_notifications
+
+Wait on the websocket connection for one of a list of expected notifications to
+be delivered. The first notification matching a channel in the list passed will
+be returned. `time` is how long to wait before giving up.
+
+**Arguments:** `channel_ids`, `time`
+
+```python
+yield expect_notifications([
+    "1913165ea4104f1482ee440cedac6abd",
+    "57e58ab6ab6f4e5dbb0e8b93304ac844",
+    "dc3323f8674948e5ac83e53830e4a8f7"
+    ], 5)
 ```
 
 **Returns:** `None` if the timeout was hit, or the following if the expected

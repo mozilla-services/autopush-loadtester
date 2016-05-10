@@ -7,6 +7,7 @@ from aplt.commands import (
     register,
     send_notification,
     expect_notification,
+    expect_notifications,
     unregister,
     disconnect,
     ack,
@@ -98,7 +99,7 @@ def register_forever(reg_delay=30, run_once=0):
     yield connect()
     yield hello(None)
     while True:
-        yield register(random_channel_id())
+        reg = yield register(random_channel_id())
         yield wait(reg_delay)
 
         if run_once:
@@ -239,3 +240,23 @@ def _explode():
 
 def _test_spawn():
     yield spawn("aplt.scenarios:basic, 1, 1, 0")
+
+
+def _expect_notifications():
+    from random import shuffle
+    yield connect()
+    yield hello(None)
+    chan_regs = []
+    for chan in [random_channel_id() for _ in range(10)]:
+        reg = yield register(chan)
+        yield send_notification(reg["pushEndpoint"], None, 60)
+        # Server may reformat the channel id, use that one
+        chan_regs.append(reg["channelID"])
+    shuffle(chan_regs)
+    for _ in range(10):
+        notif = yield expect_notifications(chan_regs, 5)
+        log.msg("Got notif: ", notif)
+        yield ack(channel_id=notif["channelID"], version=notif["version"])
+    for chid in chan_regs:
+        yield unregister(chid)
+    yield disconnect()
