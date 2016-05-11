@@ -242,6 +242,13 @@ def _test_spawn():
     yield spawn("aplt.scenarios:basic, 1, 1, 0")
 
 
+def _test_multiple_spawn():
+    yield spawn("aplt.scenarios:basic, 1, 1, 0")
+    yield spawn("aplt.scenarios:basic, 1, 1, 0")
+    yield spawn("aplt.scenarios:basic, 1, 1, 0")
+    yield spawn("aplt.scenarios:basic, 1, 1, 0")
+
+
 def _expect_notifications():
     from random import shuffle
     yield connect()

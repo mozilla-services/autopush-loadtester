@@ -16,7 +16,10 @@ from twisted.python import log
 
 class WSClientProtocol(WebSocketClientProtocol):
     def onOpen(self):
-        self.processor = self.harness.add_client(self)
+        self.processor = self.factory.harness.add_client(self)
+        if not self.processor:
+            # Unnecessary open, no one waiting
+            return
         self.processor.handle(dict(messageType="connect", client=self))
 
     def onMessage(self, payload, isBinary):
@@ -28,7 +31,7 @@ class WSClientProtocol(WebSocketClientProtocol):
             self.processor.handle(data)
 
     def onClose(self, wasClean, code, reason):
-        self.harness.remove_client(self)
+        self.factory.harness.remove_client(self)
 
         try:
             self.processor.handle(dict(messageType="disconnect",

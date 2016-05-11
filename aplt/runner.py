@@ -44,7 +44,7 @@ class RunnerHarness(object):
             websocket_url,
             headers={"Origin": "localhost:9000"})
         self._factory.protocol = WSClientProtocol
-        self._factory.protocol.harness = self
+        self._factory.harness = self
         if websocket_url.startswith("wss"):
             self._factory_context = ssl.ClientContextFactory()
         else:
@@ -203,9 +203,10 @@ class LoadRunner(object):
         def _run_testplan(self, test_plan):
             scenario, quantity, stagger, overall_delay, scenario_args = \
                 test_plan
-            harness = RunnerHarness(self, self._websocket_url,
-                                    self._statsd_client, scenario,
-                                    *scenario_args[0], **scenario_args[1])
+            harness = RunnerHarness(
+                self, self._websocket_url, self._statsd_client, scenario,
+                *scenario_args[0], **scenario_args[1]
+            )
             self._harnesses.append(harness)
             iterations = quantity / stagger
             for delay in range(iterations):
