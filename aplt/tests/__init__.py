@@ -119,6 +119,17 @@ class TestIntegration(unittest.TestCase):
         reactor.callLater(3, self._check_testplan_done, h, d)
         return d
 
+    def test_spawn_multiple_testplan(self):
+        import aplt.runner as runner
+        h = runner.run_scenario({
+            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "SCENARIO_FUNCTION": "aplt.scenarios:_test_multiple_spawn",
+            "SCENARIO_ARGS": [],
+        }, run=False)
+        d = Deferred()
+        reactor.callLater(3, self._check_testplan_done, h, d)
+        return d
+
     def test_basic_testplan_with_args(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
