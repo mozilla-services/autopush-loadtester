@@ -139,6 +139,47 @@ def notification_forever(notif_delay=30, run_once=0):
             break
 
 
+def notification_forever_stored(qty_stored=1000, ttl=300, flood_delay=30,
+                                notif_delay=30, run_once=0):
+    """Connects, then repeats every delay interval:
+    1. register
+    2. send notifications x qty_stored (# of notifications to store)
+    3. wait for flood_delay (seconds)
+    4. receive notifications x qty_stored
+
+    Repeats forever.
+    """
+    yield connect()
+    yield hello(None)
+    reg = yield register(random_channel_id())
+
+    while True:
+        message_ids = []
+        length, data = random_data(min_length=2048, max_length=4096)
+
+        for i in range(qty_stored):
+            response, content = yield send_notification(reg["pushEndpoint"],
+                                                        data, ttl)
+            yield counter("notification.throughput.bytes", length)
+            yield counter("notification.sent", i)
+            notif = yield expect_notification(reg["channelID"], ttl)
+            yield counter("notification.sent", i)
+            message_ids.append(notif["version"])
+            yield wait(notif_delay)
+
+        yield wait(flood_delay)
+
+        for i in range(qty_stored):
+            yield ack(channel_id=notif["channelID"], version=message_ids[i])
+            yield counter("notification.ack", i)
+            yield wait(notif_delay)
+
+        if run_once:
+            yield unregister(reg["channelID"])
+            yield disconnect()
+            break
+
+
 def notification_forever_unsubscribed(notif_delay=30, run_once=0):
     """Connects, registers, unregisters, then repeat following steps
     every delay interval (ignoring 4XXs):
@@ -224,9 +265,84 @@ def notification_forever_bad_endpoints(notif_delay=30, run_once=0):
             break
 
 
+def api_test():
+    """API test: run scenarios once, then stop."""
+
+    qty = 1
+    stagger_delay = 1
+    overall_delay = 0
+    notif_delay = 2
+    run_once = 1
+
+    yield spawn(
+        "aplt.scenarios:basic, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay))
+
+    yield spawn(
+        "aplt.scenarios:notification_forever_unsubscribed, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+    yield spawn(
+        "aplt.scenarios:notification_forever_bad_tokens, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+    yield spawn(
+        "aplt.scenarios:notification_forever_bad_endpoints, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+
+def loadtest():
+    """loadtest: run all scenarios forever."""
+
+    qty = 1
+    stagger_delay = 1
+    overall_delay = 0
+    notif_delay = 2
+    run_once = 0
+
+    yield spawn(
+        "aplt.scenarios:connect_and_idle_forever, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay))
+
+    yield spawn(
+        "aplt.scenarios:reconnect_forever, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+    yield spawn(
+        "aplt.scenarios:register_forever, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+    yield spawn(
+        "aplt.scenarios:notification_forever, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+    qty_stored = 30
+    ttl = 300
+    flood_delay = 1
+
+    yield spawn(
+        "aplt.scenarios:notification_forever_stored, \
+         %s, %s, %s, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, qty_stored,
+           ttl, flood_delay, notif_delay, run_once))
+
+    yield spawn(
+        "aplt.scenarios:notification_forever_unsubscribed, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+    yield spawn(
+        "aplt.scenarios:notification_forever_bad_tokens, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+    yield spawn(
+        "aplt.scenarios:notification_forever_bad_endpoints, %s, %s, %s, %s, %s"
+        % (qty, stagger_delay, overall_delay, notif_delay, run_once))
+
+
 ##############################################################################
-# TEST SCENARIOS
+# Internal APLT Tests
 ##############################################################################
+
 _RESTARTS = 0
 
 
