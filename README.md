@@ -2,9 +2,15 @@
 
 # Autopush Load-Tester
 
-The Autopush Load-Tester is an integrated tester and load-tester for the Mozilla
+The Autopush Load-Tester is an integrated API and load-tester for the Mozilla
 Services autopush project. It's intented to verify proper functioning of
 autopush deployments under various load conditions.
+
+## Supported Platforms 
+
+`ap-loadtester` should run on most Linux distro(s).  Though we provide some 
+notes for OSX users (see below), please note that we only support usage
+of this tool on Linux. 
 
 ## Getting Started
 
