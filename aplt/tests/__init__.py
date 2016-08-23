@@ -45,7 +45,7 @@ class TestIntegration(unittest.TestCase):
     def test_basic_runner(self):
         import aplt.runner as runner
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:basic",
             "SCENARIO_ARGS": [],
         }, run=False)
@@ -60,7 +60,7 @@ class TestIntegration(unittest.TestCase):
                   "sub": "mailto:admin@example.com",
                   "exp": int(time.time()) + 86400}
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:basic",
             "SCENARIO_ARGS": [{"vapid_private_key": T_PRIVATE,
                                "vapid_claims": claims}],
@@ -90,7 +90,7 @@ class TestIntegration(unittest.TestCase):
                 "vapid_claims": claims}
         jclaims = json.dumps(args).replace(",", "\\,")
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:basic",
             "SCENARIO_ARGS": [jclaims],
         }, run=False)
@@ -101,7 +101,7 @@ class TestIntegration(unittest.TestCase):
     def test_basic_testplan(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "TEST_PLAN": "aplt.scenarios:basic, 5, 5, 0",
         }, run=False)
         d = Deferred()
@@ -111,7 +111,7 @@ class TestIntegration(unittest.TestCase):
     def test_spawn_testplan(self):
         import aplt.runner as runner
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:_test_spawn",
             "SCENARIO_ARGS": [],
         }, run=False)
@@ -122,7 +122,7 @@ class TestIntegration(unittest.TestCase):
     def test_spawn_multiple_testplan(self):
         import aplt.runner as runner
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:_test_multiple_spawn",
             "SCENARIO_ARGS": [],
         }, run=False)
@@ -133,7 +133,7 @@ class TestIntegration(unittest.TestCase):
     def test_basic_testplan_with_args(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "TEST_PLAN": "aplt.scenarios:notification_forever, 5, 5, 0, 1, 1",
         }, run=False)
         d = Deferred()
@@ -143,7 +143,7 @@ class TestIntegration(unittest.TestCase):
     def test_basic_testplan_with_vapid(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "TEST_PLAN":
                 "aplt.scenarios:notification_forever, 5, 5, 0, 1, 1",
             "SCENARIO_KWARGS": {'vapid_claims': {
@@ -158,7 +158,7 @@ class TestIntegration(unittest.TestCase):
     def test_wait_twice(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "TEST_PLAN": "aplt.tests:_wait_multiple, 1, 1, 0",
         }, run=False)
         d = Deferred()
@@ -168,7 +168,7 @@ class TestIntegration(unittest.TestCase):
     def test_stack_gens(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "TEST_PLAN": "aplt.tests:_stack_gens, 1, 1, 0",
         }, run=False)
         d = Deferred()
@@ -178,7 +178,7 @@ class TestIntegration(unittest.TestCase):
     def test_class_method(self):
         import aplt.runner as runner
         lh = runner.run_testplan({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "TEST_PLAN": "aplt.tests:Aclass.amethod, 1, 1, 0",
         }, run=False)
         d = Deferred()
@@ -189,7 +189,7 @@ class TestIntegration(unittest.TestCase):
     def test_bad_testplan(self):
         import aplt.runner as runner
         runner.run_testplan({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "TEST_PLAN": "aplt.scenarios:basic, 5, 5",
         }, run=False)
 
@@ -197,7 +197,7 @@ class TestIntegration(unittest.TestCase):
     def test_bad_load(self):
         import aplt.runner as runner
         runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenaribasic",
             "SCENARIO_ARGS": "",
         }, run=False)
@@ -205,7 +205,7 @@ class TestIntegration(unittest.TestCase):
     def test_notification_forever(self):
         import aplt.runner as runner
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:notification_forever",
             "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
@@ -216,7 +216,7 @@ class TestIntegration(unittest.TestCase):
     def test_reconnect_forever(self):
         import aplt.runner as runner
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:reconnect_forever",
             "SCENARIO_ARGS": ["0",  "1"],
         }, run=False)
@@ -227,7 +227,7 @@ class TestIntegration(unittest.TestCase):
     def test_expect_notifications(self):
         import aplt.runner as runner
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:_expect_notifications",
             "SCENARIO_ARGS": [],
         }, run=False)
@@ -240,7 +240,7 @@ class TestIntegration(unittest.TestCase):
         import aplt.scenarios as scenarios
         scenarios._RESTARTS = 0
         h = runner.run_scenario({
-            "WEBSOCKET_URL": "wss://autopush-dev.stage.mozaws.net/",
+            "WEBSOCKET_URL": "wss://autopush.dev.mozaws.net/",
             "SCENARIO_FUNCTION": "aplt.scenarios:_explode",
             "SCENARIO_ARGS": [],
         }, run=False)
@@ -262,7 +262,7 @@ class TestHarness(unittest.TestCase):
         from aplt.runner import RunnerHarness, parse_statsd_args
         from aplt.scenarios import basic
         client = parse_statsd_args({})
-        self.rh = RunnerHarness(Mock(), "wss://autopush-dev.stage.mozaws.net/",
+        self.rh = RunnerHarness(Mock(), "wss://autopush.dev.mozaws.net/",
                                 basic, client)
         self.rh.metrics = client
         return self.rh

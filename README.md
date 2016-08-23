@@ -14,7 +14,7 @@ of this tool on Linux.
 
 ## Getting Started
 
-`ap-loadtester` uses PyPy 5.0 which can be downloaded here:
+`ap-loadtester` uses PyPy 5.3.1 which can be downloaded here:
 http://pypy.org/download.html
 
 You will also need virtualenv installed on your system to setup a virtualenv for
@@ -23,13 +23,13 @@ could then setup the loadtester for use with the following commands:
 
 **Linux:**
 
-    $ tar xjvf pypy-5.0.0-linux64.tar.bz2
-    $ virtualenv -p pypy-5.0.0-linux64/bin/pypy apenv
+    $ tar xjvf pypy2-v5.3.1-linux64.tar.bz2
+    $ virtualenv -p pypy2-v5.3.1-linux64/bin/pypy apenv
 
 **OSX:**
 
-    $ tar xjvf pypy-5.0.0-osx64.tar.bz2
-    $ virtualenv -p pypy-5.0.0-osx64/bin/pypy apenv
+    $ tar xjvf pypy2-v5.3.1-osx64.tar.bz2
+    $ virtualenv -p pypy2-v5.3.1-osx64/bin/pypy apenv
 
 **Activate Virtualenv:**
 
@@ -53,12 +53,12 @@ Install the `ap-loadtester` package:
 
 Run the basic scenario against the dev server:
 
-    $ aplt_scenario wss://autopush-dev.stage.mozaws.net/ aplt.scenarios:basic
+    $ aplt_scenario wss://autopush.dev.mozaws.net/ aplt.scenarios:basic
 
 Run 5 instances of the basic scenario, starting one every second, against the
 dev server:
 
-    $ aplt_testplan wss://autopush-dev.stage.mozaws.net/ "aplt.scenarios:basic,5,1,0"
+    $ aplt_testplan wss://autopush.dev.mozaws.net/ "aplt.scenarios:basic,5,1,0"
 
 Either of these scripts can be run with `-h` for full help documentation.
 
@@ -88,11 +88,12 @@ Linux: You'll need to install OpenSSL:
 
 OSX: Apple has deprecated OpenSSL in favor of its own TLS and crypto libraries.
 If you get this error on OSX (El Capitan), install OpenSSL with brew, then
-link brew libraries and install cryptography:
+link brew libraries and install cryptography.  
+NOTE: /usr/local/opt/openssl is symlinked to brew Cellar:
 
     $ brew install openssl
-    $ env LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include" pip install cryptography
-
+    $ ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib" \
+      CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography
 
 **missing required distribution pyasn1**
 
