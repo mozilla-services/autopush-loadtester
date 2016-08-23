@@ -17,9 +17,9 @@ RUN \
     apt-get install -y -qq make curl wget bzip2 libexpat1-dev gcc libssl-dev libffi-dev; \
     apt-get install -y -qq python-virtualenv; \
     apt-get install -y -qq libexpat1 libssl1.0.0 libffi6; \
-    wget https://bitbucket.org/pypy/pypy/downloads/pypy-5.0.0-linux64.tar.bz2; \
-    tar xjvf pypy-5.0.0-linux64.tar.bz2; \
-    /usr/bin/virtualenv -p pypy-5.0.0-linux64/bin/pypy apenv; \
+    wget https://bitbucket.org/pypy/pypy/downloads/pypy2-v5.3.1-linux64.tar.bz2; \
+    tar xjvf pypy2-v5.3.1-linux64.tar.bz2; \
+    /usr/bin/virtualenv -p pypy2-v5.3.1-linux64/bin/pypy apenv; \
     ./apenv/bin/pip install --upgrade pip; \
     ./apenv/bin/pip install -U setuptools; \
     ./apenv/bin/pip install pyasn1; \
