@@ -4,7 +4,6 @@ import importlib
 import inspect
 import json
 import re
-import sys
 from collections import deque
 
 import treq
@@ -388,7 +387,6 @@ def run_scenario(args=None, run=True):
     arguments = args or docopt(run_scenario.__doc__, version=__version__)
     arg = arguments["SCENARIO_FUNCTION"]
     scenario = locate_function(arg)
-    log.startLogging(sys.stdout)
     statsd_client = parse_statsd_args(arguments)
     scenario_args, scenario_kw = group_kw_args(arguments["SCENARIO_ARGS"])
     scenario_args = try_int_list_coerce(scenario_args)
