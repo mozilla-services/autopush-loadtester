@@ -41,7 +41,7 @@ class RunnerHarness(object):
                  *scenario_args, **scenario_kw):
         self._factory = WebSocketClientFactory(
             websocket_url,
-            headers={"Origin": "localhost:9000"})
+            headers={"Origin": "http://localhost:9000"})
         self._factory.protocol = WSClientProtocol
         self._factory.harness = self
         if websocket_url.startswith("wss"):
