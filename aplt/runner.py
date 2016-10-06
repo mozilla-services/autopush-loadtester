@@ -14,12 +14,14 @@ from autobahn.twisted.websocket import (
 from docopt import docopt
 from twisted.internet import reactor, ssl, task
 from twisted.python import log
+from twisted.web.client import Agent
 
 from aplt import __version__
 from aplt.client import (
     CommandProcessor,
     WSClientProtocol
 )
+from aplt.utils import UnverifiedHTTPS
 from aplt.vapid import Vapid
 import aplt.metrics as metrics
 
@@ -37,8 +39,15 @@ class RunnerHarness(object):
     will run to completion or possibly forever.
 
     """
-    def __init__(self, load_runner, websocket_url, statsd_client, scenario,
-                 *scenario_args, **scenario_kw):
+    def __init__(self,
+                 load_runner,
+                 websocket_url,
+                 statsd_client,
+                 scenario,
+                 endpoint_ssl_cert=None,
+                 endpoint_ssl_key=None,
+                 *scenario_args,
+                 **scenario_kw):
         self._factory = WebSocketClientFactory(
             websocket_url,
             headers={"Origin": "http://localhost:9000"})
@@ -72,6 +81,14 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         self._claims = None
         if "vapid_claims" in self._scenario_kw:
             self._claims = self._scenario_kw.get("vapid_claims")
+
+        self._agent = None
+        if endpoint_ssl_cert:
+            self._agent = Agent(
+                reactor,
+                contextFactory=UnverifiedHTTPS(
+                    endpoint_ssl_cert,
+                    endpoint_ssl_key))
 
     def run(self):
         """Start registered scenario"""
@@ -107,7 +124,8 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         d = treq.post(url,
                       data=data,
                       headers=headers,
-                      allow_redirects=False)
+                      allow_redirects=False,
+                      agent=self._agent)
         d.addCallback(self._sent_notification, processor)
         d.addErrback(self._error_notif, processor)
 
@@ -161,7 +179,8 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
 
 class LoadRunner(object):
         """Runs a bunch of scenarios for a load-test"""
-        def __init__(self, scenario_list, statsd_client, websocket_url):
+        def __init__(self, scenario_list, statsd_client, websocket_url,
+                     endpoint_ssl_cert, endpoint_ssl_key):
             """Initializes a LoadRunner
 
             Takes a list of tuples indicating scenario to run, quantity,
@@ -192,6 +211,8 @@ class LoadRunner(object):
             self._queued_calls = 0
             self._statsd_client = statsd_client
             self._websocket_url = websocket_url
+            self._endpoint_ssl_cert = endpoint_ssl_cert
+            self._endpoint_ssl_key = endpoint_ssl_key
 
         def start(self):
             """Schedules all the scenarios supplied"""
@@ -203,8 +224,14 @@ class LoadRunner(object):
             scenario, quantity, stagger, overall_delay, scenario_args = \
                 test_plan
             harness = RunnerHarness(
-                self, self._websocket_url, self._statsd_client, scenario,
-                *scenario_args[0], **scenario_args[1]
+                self,
+                self._websocket_url,
+                self._statsd_client,
+                scenario,
+                self._endpoint_ssl_cert,
+                self._endpoint_ssl_key,
+                *scenario_args[0],
+                **scenario_args[1]
             )
             self._harnesses.append(harness)
             iterations = quantity / stagger
@@ -382,6 +409,8 @@ def run_scenario(args=None, run=True):
                       [--datadog_api_key=DD_API_KEY]
                       [--datadog_app_key=DD_APP_KEY]
                       [--datadog_flush_interval=DD_FLUSH_INTERVAL]
+                      [--endpoint_ssl_cert=SSL_CERT]
+                      [--endpoint_ssl_key=SSL_KEY]
 
     """
     arguments = args or docopt(run_scenario.__doc__, version=__version__)
@@ -395,7 +424,9 @@ def run_scenario(args=None, run=True):
     plan = ([scenario, 1, 1, 0] + [(scenario_args, scenario_kw)])
     testplans = [plan]
 
-    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"])
+    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
+                    arguments.get("--endpoint_ssl_cert"),
+                    arguments.get("--endpoint_ssl_key"))
     observer = log.PythonLoggingObserver()
     observer.start()
     logging.basicConfig(level=logging.INFO)
@@ -422,6 +453,8 @@ def run_testplan(args=None, run=True):
                       [--datadog_api_key=DD_API_KEY]
                       [--datadog_app_key=DD_APP_KEY]
                       [--datadog_flush_interval=DD_FLUSH_INTERVAL]
+                      [--endpoint_ssl_cert=SSL_CERT]
+                      [--endpoint_ssl_key=SSL_KEY]
 
     test_plan should be a string with the following format:
         "<scenario_function>, <quantity>, <stagger>, <delay>, *args | *repeat"
@@ -449,7 +482,9 @@ def run_testplan(args=None, run=True):
     arguments = args or docopt(run_testplan.__doc__, version=__version__)
     testplans = parse_testplan(arguments["TEST_PLAN"])
     statsd_client = parse_statsd_args(arguments)
-    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"])
+    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
+                    arguments.get("--endpoint_ssl_cert"),
+                    arguments.get("--endpoint_ssl_key"))
     observer = log.PythonLoggingObserver()
     observer.start()
     logging.basicConfig(level=logging.INFO)
