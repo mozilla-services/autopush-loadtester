@@ -54,12 +54,28 @@ class UnverifiedHTTPS(object):
                              "client_keyfile")
 
         if client_certfile:
-            with open(client_certfile) as fpc:
-                self.cert = load_certificate(FILETYPE_PEM, fpc.read())
             if not client_keyfile:
                 client_keyfile = client_certfile
-            with open(client_keyfile) as fpk:
-                self.key = load_privatekey(FILETYPE_PEM, fpk.read())
+
+            close = False
+            if isinstance(client_certfile, (unicode, bytes)):
+                client_certfile = open(client_certfile)
+                client_keyfile = open(client_keyfile)
+                # otherwise assume passed file-like objects
+                close = True
+
+            def _load_key(func, fp, close):
+                try:
+                    data = fp.read()
+                finally:
+                    if close:
+                        fp.close()
+                return func(FILETYPE_PEM, data)
+
+            self.cert = _load_key(load_certificate, client_certfile, close)
+            if client_certfile is client_keyfile:
+                client_keyfile.seek(0)
+            self.key = _load_key(load_privatekey, client_keyfile, close)
         else:
             self.cert = self.key = None
 
