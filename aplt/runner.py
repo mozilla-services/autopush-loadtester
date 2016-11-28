@@ -58,9 +58,9 @@ class RunnerHarness(object):
         else:
             self._factory_context = None
 
-        self._crypto_key = """\
-keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
-"""
+        # somewhat bogus encryption headers
+        self._crypto_key = "keyid=p256dh;dh=c2VuZGVy"
+        self._encryption = "keyid=p256dh;salt=XZwpw6o37R-6qoZjw6KwAw"
 
         # Processor and Websocket client vars
         self._scenario = scenario
@@ -111,15 +111,20 @@ keyid="http://example.org/bob/keys/123;salt="XZwpw6o37R-6qoZjw6KwAw"\
         """Send out a notification to a url for a processor"""
         url = url.encode("utf-8")
         headers = {"TTL": str(ttl)}
+        crypto_key = self._crypto_key
         claims = claims or self._claims
         if self._vapid and claims:
             headers.update(self._vapid.sign(claims))
+            crypto_key = "{};p256ecdsa={}".format(
+                crypto_key,
+                self._vapid.public_key_urlsafe_base64
+            )
         if data:
             headers.update({
                 "Content-Type": "application/octet-stream",
-                "Content-Encoding": "aesgcm-128",
-                "Encryption": self._crypto_key,
-                "Encryption-Key": "Invalid-Key-Used-Here",
+                "Content-Encoding": "aesgcm",
+                "Crypto-key": crypto_key,
+                "Encryption": self._encryption,
             })
         d = treq.post(url,
                       data=data,

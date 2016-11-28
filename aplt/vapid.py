@@ -64,6 +64,10 @@ class Vapid(object):
             self._public_key = self.private_key.get_verifying_key()
         return self._public_key
 
+    @property
+    def public_key_urlsafe_base64(self):
+        return self._encode(self.public_key.to_string()).strip('=')
+
     def generate_keys(self):
         """Generate a valid ECDSA Key Pair."""
         self.private_key = ecdsa.SigningKey.generate(curve=ecdsa.NIST256p)
@@ -139,8 +143,7 @@ class Vapid(object):
                 "'sub' is your admin email as a mailto: link.")
         sig = jws.sign(claims, self.private_key, algorithm="ES256")
         pkey = 'p256ecdsa='
-        pkey += self._encode(
-            self.public_key.to_string()).strip('=')
+        pkey += self.public_key_urlsafe_base64
         if crypto_key:
             crypto_key = crypto_key + ',' + pkey
         else:
