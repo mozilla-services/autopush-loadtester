@@ -3,8 +3,10 @@ import logging
 import importlib
 import inspect
 import json
+import os
 import re
 from collections import deque
+from StringIO import StringIO
 
 import treq
 from autobahn.twisted.websocket import (
@@ -30,6 +32,8 @@ import txaio
 txaio.use_twisted()
 
 STATS_PROTOCOL = None
+
+PEM_FILE_HEADER = "-----BEGIN "
 
 
 class RunnerHarness(object):
@@ -386,6 +390,20 @@ def parse_statsd_args(args):
         return metrics.SinkMetrics()
 
 
+def parse_ssl_args(args):
+    cert = args.get("--endpoint_ssl_cert")
+    if cert:
+        key = args.get("--endpoint_ssl_key")
+    else:
+        cert = os.environ.get("ENDPOINT_SSL_CERT")
+        if cert and cert.startswith(PEM_FILE_HEADER):
+            cert = StringIO(cert)
+        key = os.environ.get("ENDPOINT_SSL_KEY")
+        if key and key.startswith(PEM_FILE_HEADER):
+            key = StringIO(cert)
+    return cert, key
+
+
 def group_kw_args(*args):
     """Divvy up argument hashes and single values into args and kwargs."""
     kw_args = {}
@@ -417,6 +435,14 @@ def run_scenario(args=None, run=True):
                       [--endpoint_ssl_cert=SSL_CERT]
                       [--endpoint_ssl_key=SSL_KEY]
 
+    Other environment variables:
+    ENDPOINT_SSL_CERT: like --endpoint_ssl_cert, but see below
+    ENDPOINT_SSL_KEY:  like --endpoint_ssl_key, but see below
+
+    The ENDPOINT_SSL_CERT/ENDPOINT_SSL_KEY environment variables
+    accept a path to cert files (like the command line equivalent) or
+    optionally the contents of the PEM files themselves.
+
     """
     arguments = args or docopt(run_scenario.__doc__, version=__version__)
     arg = arguments["SCENARIO_FUNCTION"]
@@ -425,13 +451,13 @@ def run_scenario(args=None, run=True):
     scenario_args, scenario_kw = group_kw_args(arguments["SCENARIO_ARGS"])
     scenario_args = try_int_list_coerce(scenario_args)
     verify_arguments(scenario, *scenario_args, **scenario_kw)
+    ssl_cert, ssl_key = parse_ssl_args(arguments)
 
     plan = ([scenario, 1, 1, 0] + [(scenario_args, scenario_kw)])
     testplans = [plan]
 
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
-                    arguments.get("--endpoint_ssl_cert"),
-                    arguments.get("--endpoint_ssl_key"))
+                    ssl_cert, ssl_key)
     observer = log.PythonLoggingObserver()
     observer.start()
     logging.basicConfig(level=logging.INFO)
@@ -483,13 +509,21 @@ def run_testplan(args=None, run=True):
     *repeat
         More tuples of the same format.
 
+    Other environment variables:
+    ENDPOINT_SSL_CERT: like --endpoint_ssl_cert, but see below
+    ENDPOINT_SSL_KEY:  like --endpoint_ssl_key, but see below
+
+    The ENDPOINT_SSL_CERT/ENDPOINT_SSL_KEY environment variables
+    accept a path to cert files (like the command line equivalent) or
+    optionally the contents of the PEM files themselves.
+
     """
     arguments = args or docopt(run_testplan.__doc__, version=__version__)
     testplans = parse_testplan(arguments["TEST_PLAN"])
     statsd_client = parse_statsd_args(arguments)
+    ssl_cert, ssl_key = parse_ssl_args(arguments)
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
-                    arguments.get("--endpoint_ssl_cert"),
-                    arguments.get("--endpoint_ssl_key"))
+                    ssl_cert, ssl_key)
     observer = log.PythonLoggingObserver()
     observer.start()
     logging.basicConfig(level=logging.INFO)
