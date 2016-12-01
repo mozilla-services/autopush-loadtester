@@ -23,13 +23,13 @@ from aplt.decorators import restart
 from aplt.utils import bad_push_endpoint
 
 
-def basic(*args):
+def basic():
     """Connects, sends a notification, than disconnects"""
     yield connect()
     yield hello(None)
-    reg = yield register(random_channel_id())
+    reg, endpoint = yield register(random_channel_id())
     yield timer_start("update.latency")
-    response, content = yield send_notification(reg["pushEndpoint"], None, 60)
+    response, content = yield send_notification(endpoint, None, 60)
     yield counter("notification.sent", 1)
     notif = yield expect_notification(reg["channelID"], 5)
     yield counter("notification.received", 1)
@@ -62,15 +62,14 @@ def reconnect_forever(reconnect_delay=30, run_once=0):
     yield connect()
     response = yield hello(None)
 
-    reg = yield register(random_channel_id())
+    reg, endpoint = yield register(random_channel_id())
     assert "uaid" in response
     uaid = response["uaid"]
 
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
         yield timer_start("update.latency")
-        response, content = yield send_notification(reg["pushEndpoint"], data,
-                                                    60)
+        response, content = yield send_notification(endpoint, data, 60)
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
         notif = yield expect_notification(reg["channelID"], 5)
@@ -99,7 +98,7 @@ def register_forever(reg_delay=30, run_once=0):
     yield connect()
     yield hello(None)
     while True:
-        reg = yield register(random_channel_id())
+        reg, endpoint = yield register(random_channel_id())
         yield wait(reg_delay)
 
         if run_once:
@@ -117,17 +116,16 @@ def notification_forever(notif_delay=30, run_once=0):
     """
     yield connect()
     yield hello(None)
-    reg = yield register(random_channel_id())
+    reg, endpoint = yield register(random_channel_id())
 
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
         yield timer_start("update.latency")
-        response, content = yield send_notification(reg["pushEndpoint"], data,
-                                                    60)
+        response, content = yield send_notification(endpoint, data, 60)
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
         notif = yield expect_notification(reg["channelID"], 5)
-        yield counter("notification.sent", 1)
+        yield counter("notification.received", 1)
         yield timer_end("update.latency")
         yield ack(channel_id=notif["channelID"], version=notif["version"])
         yield counter("notification.ack", 1)
@@ -151,19 +149,18 @@ def notification_forever_stored(qty_stored=1000, ttl=300, flood_delay=30,
     """
     yield connect()
     yield hello(None)
-    reg = yield register(random_channel_id())
+    reg, endpoint = yield register(random_channel_id())
 
     while True:
         message_ids = []
         length, data = random_data(min_length=2048, max_length=4096)
 
         for i in range(qty_stored):
-            response, content = yield send_notification(reg["pushEndpoint"],
-                                                        data, ttl)
+            response, content = yield send_notification(endpoint, data, ttl)
             yield counter("notification.throughput.bytes", length)
             yield counter("notification.sent", i)
             notif = yield expect_notification(reg["channelID"], ttl)
-            yield counter("notification.sent", i)
+            yield counter("notification.received", 1)
             message_ids.append(notif["version"])
             yield wait(notif_delay)
 
@@ -190,18 +187,17 @@ def notification_forever_unsubscribed(notif_delay=30, run_once=0):
     """
     yield connect()
     yield hello(None)
-    reg = yield register(random_channel_id())
+    reg, endpoint = yield register(random_channel_id())
     unregister(reg["channelID"])
 
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
         yield timer_start("update.latency")
-        response, content = yield send_notification(reg["pushEndpoint"], data,
-                                                    60)
+        response, content = yield send_notification(endpoint, data, 60)
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
         notif = yield expect_notification(reg["channelID"], 5)
-        yield counter("notification.sent", 1)
+        yield counter("notification.received", 1)
         yield timer_end("update.latency")
         yield ack(channel_id=notif["channelID"], version=notif["version"])
         yield counter("notification.ack", 1)
@@ -225,14 +221,12 @@ def notification_forever_bad_tokens(notif_delay=30, run_once=0,
 
     # register only to retrieve valid endpoint path
     # (we'll replace valid token with invalid one)
-    reg = yield register(random_channel_id())
+    reg, endpoint = yield register(random_channel_id())
 
     while True:
-        push_endpoint = bad_push_endpoint(reg["pushEndpoint"],
-                                          token_length)
+        endpoint = bad_push_endpoint(endpoint, token_length)
         length, data = random_data(min_length=2048, max_length=4096)
-        response, content = yield send_notification(push_endpoint, data,
-                                                    60)
+        response, content = yield send_notification(endpoint, data, 60)
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
 
@@ -252,10 +246,9 @@ def notification_forever_bad_endpoints(notif_delay=30, run_once=0):
     yield hello(None)
 
     while True:
-        push_endpoint = bad_push_endpoint()
+        endpoint = bad_push_endpoint()
         length, data = random_data(min_length=2048, max_length=4096)
-        response, content = yield send_notification(push_endpoint, data,
-                                                    60)
+        response, content = yield send_notification(endpoint, data, 60)
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
 
@@ -371,8 +364,8 @@ def _expect_notifications():
     yield hello(None)
     chan_regs = []
     for chan in [random_channel_id() for _ in range(10)]:
-        reg = yield register(chan)
-        yield send_notification(reg["pushEndpoint"], None, 60)
+        reg, endpoint = yield register(chan)
+        yield send_notification(endpoint, None, 60)
         # Server may reformat the channel id, use that one
         chan_regs.append(reg["channelID"])
     shuffle(chan_regs)

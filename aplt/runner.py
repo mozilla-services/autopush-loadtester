@@ -5,6 +5,7 @@ import inspect
 import json
 import os
 import re
+import urlparse
 from collections import deque
 from StringIO import StringIO
 
@@ -48,6 +49,7 @@ class RunnerHarness(object):
                  websocket_url,
                  statsd_client,
                  scenario,
+                 endpoint=None,
                  endpoint_ssl_cert=None,
                  endpoint_ssl_key=None,
                  *scenario_args,
@@ -86,6 +88,7 @@ class RunnerHarness(object):
         if "vapid_claims" in self._scenario_kw:
             self._claims = self._scenario_kw.get("vapid_claims")
 
+        self._endpoint = urlparse.urlparse(endpoint) if endpoint else None
         self._agent = None
         if endpoint_ssl_cert:
             self._agent = Agent(
@@ -188,8 +191,13 @@ class RunnerHarness(object):
 
 class LoadRunner(object):
         """Runs a bunch of scenarios for a load-test"""
-        def __init__(self, scenario_list, statsd_client, websocket_url,
-                     endpoint_ssl_cert, endpoint_ssl_key):
+        def __init__(self,
+                     scenario_list,
+                     statsd_client,
+                     websocket_url,
+                     endpoint,
+                     endpoint_ssl_cert,
+                     endpoint_ssl_key):
             """Initializes a LoadRunner
 
             Takes a list of tuples indicating scenario to run, quantity,
@@ -220,6 +228,7 @@ class LoadRunner(object):
             self._queued_calls = 0
             self._statsd_client = statsd_client
             self._websocket_url = websocket_url
+            self._endpoint = endpoint
             self._endpoint_ssl_cert = endpoint_ssl_cert
             self._endpoint_ssl_key = endpoint_ssl_key
 
@@ -237,6 +246,7 @@ class LoadRunner(object):
                 self._websocket_url,
                 self._statsd_client,
                 scenario,
+                self._endpoint,
                 self._endpoint_ssl_cert,
                 self._endpoint_ssl_key,
                 *scenario_args[0],
@@ -390,7 +400,14 @@ def parse_statsd_args(args):
         return metrics.SinkMetrics()
 
 
-def parse_ssl_args(args):
+def parse_endpoint_args(args):
+    endpoint = args.get("--endpoint")
+    if endpoint:
+        url = urlparse.urlparse(endpoint)
+        if (not (url.scheme or url.netloc) or
+                any(c != '/' for c in url.path) or
+                any(url[3:])):
+            raise Exception("Invalid endpoint: " + endpoint)
     cert = args.get("--endpoint_ssl_cert")
     if cert:
         key = args.get("--endpoint_ssl_key")
@@ -401,7 +418,7 @@ def parse_ssl_args(args):
         key = os.environ.get("ENDPOINT_SSL_KEY")
         if key and key.startswith(PEM_FILE_HEADER):
             key = StringIO(cert)
-    return cert, key
+    return endpoint, cert, key
 
 
 def group_kw_args(*args):
@@ -432,6 +449,7 @@ def run_scenario(args=None, run=True):
                       [--datadog_api_key=DD_API_KEY]
                       [--datadog_app_key=DD_APP_KEY]
                       [--datadog_flush_interval=DD_FLUSH_INTERVAL]
+                      [--endpoint=URL]
                       [--endpoint_ssl_cert=SSL_CERT]
                       [--endpoint_ssl_key=SSL_KEY]
 
@@ -451,13 +469,13 @@ def run_scenario(args=None, run=True):
     scenario_args, scenario_kw = group_kw_args(arguments["SCENARIO_ARGS"])
     scenario_args = try_int_list_coerce(scenario_args)
     verify_arguments(scenario, *scenario_args, **scenario_kw)
-    ssl_cert, ssl_key = parse_ssl_args(arguments)
+    endpoint, ssl_cert, ssl_key = parse_endpoint_args(arguments)
 
     plan = ([scenario, 1, 1, 0] + [(scenario_args, scenario_kw)])
     testplans = [plan]
 
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
-                    ssl_cert, ssl_key)
+                    endpoint, ssl_cert, ssl_key)
     observer = log.PythonLoggingObserver()
     observer.start()
     logging.basicConfig(level=logging.INFO)
@@ -484,6 +502,7 @@ def run_testplan(args=None, run=True):
                       [--datadog_api_key=DD_API_KEY]
                       [--datadog_app_key=DD_APP_KEY]
                       [--datadog_flush_interval=DD_FLUSH_INTERVAL]
+                      [--endpoint=URL]
                       [--endpoint_ssl_cert=SSL_CERT]
                       [--endpoint_ssl_key=SSL_KEY]
 
@@ -521,9 +540,9 @@ def run_testplan(args=None, run=True):
     arguments = args or docopt(run_testplan.__doc__, version=__version__)
     testplans = parse_testplan(arguments["TEST_PLAN"])
     statsd_client = parse_statsd_args(arguments)
-    ssl_cert, ssl_key = parse_ssl_args(arguments)
+    endpoint, ssl_cert, ssl_key = parse_endpoint_args(arguments)
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
-                    ssl_cert, ssl_key)
+                    endpoint, ssl_cert, ssl_key)
     observer = log.PythonLoggingObserver()
     observer.start()
     logging.basicConfig(level=logging.INFO)
