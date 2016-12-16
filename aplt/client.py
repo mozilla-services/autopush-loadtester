@@ -7,6 +7,7 @@ import json
 import time
 import types
 import sys
+import urlparse
 
 from autobahn.twisted.websocket import WebSocketClientProtocol
 from twisted.internet import reactor
@@ -281,6 +282,21 @@ class CommandProcessor(object, policies.TimeoutMixin):
         raise Exception("Unexpected event. Last Command: %s; Data: %s" % (
                         self._last_command, data))
 
+    def _get_endpoint_for_register(self, response):
+        """Return the endpoint from a register response
+
+        Optionally overriding the endpoint server if specified from
+        the command line
+
+        """
+        override = self._harness._endpoint
+        endpoint = response.get('pushEndpoint')
+        if not (override and endpoint):
+            return endpoint
+        url = urlparse.urlparse(endpoint)
+        url = (override.scheme, override.netloc) + url[2:]
+        return urlparse.urlunparse(url)
+
     def handle(self, data):
         """Handles data coming in from the websocket client"""
         message_type = data.get("messageType")
@@ -289,7 +305,13 @@ class CommandProcessor(object, policies.TimeoutMixin):
 
         log.msg("Handling websocket data: ", data)
 
-        if message_type == "notification":
+        if message_type == "register":
+            # Explicitly return the endpoint: it may be overridden by
+            # the command line
+            endpoint = self._get_endpoint_for_register(data)
+            self._send_command_result((data, endpoint))
+            return
+        elif message_type == "notification":
             # Notifications are stored for expect notification calls
             self._notifications.append(data)
             # If we are expecting, trigger it to check
