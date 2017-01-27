@@ -1,14 +1,16 @@
 language: python
+cache: pip
 sudo: false
-python:
-  - "pypy"
+
+matrix:
+  include:
+    - python: pypy-5.4.1
+      env: TOXENV=pypy CODECOV=true
+    - env: TOXENV=flake8
+
 install:
-  - wget https://bitbucket.org/pypy/pypy/downloads/pypy2-v5.3.1-linux64.tar.bz2
-  - tar xjvf pypy2-v5.3.1-linux64.tar.bz2
-  - virtualenv -p pypy2-v5.3.1-linux64/bin/pypy apenv
-  - source apenv/bin/activate
-  - pip install --upgrade pip
   - pip install tox codecov
-script: tox -- --with-coverage --cover-xml --cover-package=aplt
+script:
+  - tox ${CODECOV:+-- --with-coverage --cover-xml --cover-package=aplt}
 after_success:
-  - codecov
+  - ${CODECOV:+codecov}
