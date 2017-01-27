@@ -477,7 +477,7 @@ def run_scenario(args=None, run=True):
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
                     endpoint, ssl_cert, ssl_key)
     observer = log.PythonLoggingObserver()
-    observer.start()
+    log.startLoggingWithObserver(observer.emit, False)
     logging.basicConfig(level=logging.INFO)
     statsd_client.start()
     lh.metrics = statsd_client
@@ -544,7 +544,7 @@ def run_testplan(args=None, run=True):
     lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
                     endpoint, ssl_cert, ssl_key)
     observer = log.PythonLoggingObserver()
-    observer.start()
+    log.startLoggingWithObserver(observer.emit, False)
     logging.basicConfig(level=logging.INFO)
     statsd_client.start()
     lh.metrics = statsd_client
