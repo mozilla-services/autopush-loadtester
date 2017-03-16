@@ -48,7 +48,7 @@ class TwistedMetrics(object):
     """Twisted implementation of statsd output"""
     def __init__(self, statsd_host="localhost", statsd_port=8125,
                  namespace="aplt"):
-        self.client = TwistedStatsDClient(statsd_host, statsd_port)
+        self.client = TwistedStatsDClient.create(statsd_host, statsd_port)
         self._metric = Metrics(connection=self.client, namespace=namespace)
         self._stat_protocol = None
 
