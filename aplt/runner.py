@@ -96,6 +96,10 @@ class RunnerHarness(object):
                 contextFactory=UnverifiedHTTPS(
                     endpoint_ssl_cert,
                     endpoint_ssl_key))
+            if hasattr(endpoint_ssl_cert, 'seek'):
+                endpoint_ssl_cert.seek(0)
+            if endpoint_ssl_key and hasattr(endpoint_ssl_key, 'seek'):
+                endpoint_ssl_key.seek(0)
 
     def run(self):
         """Start registered scenario"""
