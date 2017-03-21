@@ -1,6 +1,6 @@
 # Mozilla AutoPush Load-Tester
 
-FROM pypy:2-5.3.1
+FROM pypy:2-5.6.0-slim
 
 MAINTAINER Ben Bangert <bbangert@mozilla.com>
 
@@ -10,12 +10,15 @@ ADD . /home/ap-loadtester/
 WORKDIR /home/ap-loadtester
 
 RUN \
-    pip install --upgrade pip && \
+    BUILD_DEPS="git build-essential" && \
+    apt-get update && \
+    apt-get install -yq --no-install-recommends ${BUILD_DEPS} libssl-dev && \
     pip install virtualenv && \
     virtualenv -p `which pypy` apenv && \
     ./apenv/bin/pip install pyasn1 && \
-    ./apenv/bin/python setup.py develop && \
-    apt-get autoremove -y -qq && \
+    ./apenv/bin/pip install -r requirements.txt -e . && \
+    apt-get purge -yq --auto-remove ${BUILD_DEPS} && \
+    apt-get autoremove -qq && \
     apt-get clean -y
 # End run
 
