@@ -49,7 +49,7 @@ continue to [Developing](#developing).
 
 Install the `ap-loadtester` package:
 
-    $ easy_install install ap-loadtester
+    $ pip install ap-loadtester
 
 Run the basic scenario against the dev server:
 
@@ -70,7 +70,7 @@ use with `ap-loadtester`.
 Checkout the code from this repository and run the package setup after the
 virtualenv is active:
 
-    $ python setup.py develop
+    $ pip install -r requirements.txt -e .
 
 See [Contributing](CONTRIBUTING.md) for contribution guidelines.
 
