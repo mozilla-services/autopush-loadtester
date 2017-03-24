@@ -11,8 +11,10 @@ WORKDIR /home/ap-loadtester
 
 RUN \
     BUILD_DEPS="git build-essential" && \
+    # wget not required but nice to have
+    RUN_DEPS="wget libssl-dev" && \
     apt-get update && \
-    apt-get install -yq --no-install-recommends ${BUILD_DEPS} libssl-dev && \
+    apt-get install -yq --no-install-recommends ${BUILD_DEPS} ${RUN_DEPS} && \
     pip install virtualenv && \
     virtualenv -p `which pypy` apenv && \
     ./apenv/bin/pip install pyasn1 && \
