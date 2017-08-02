@@ -47,27 +47,24 @@ class TestIntegration(unittest.TestCase):
 
     def test_basic_runner(self):
         import aplt.runner as runner
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:basic",
-            "SCENARIO_ARGS": [],
-        }, run=False)
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:basic",
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
     def test_basic_with_vapid(self):
         import aplt.runner as runner
-        from aplt.tests.test_vapid import T_PRIVATE
-        claims = {"aud": "https://example.com",
-                  "sub": "mailto:admin@example.com",
-                  "exp": int(time.time()) + 86400}
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:basic",
-            "SCENARIO_ARGS": [{"vapid_private_key": T_PRIVATE,
-                               "vapid_claims": claims}],
-        }, run=False)
+        claims = {"sub": "mailto:admin@example.com"}
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:basic",
+            (json.dumps({"vapid_claims": claims}),),
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
@@ -92,98 +89,88 @@ class TestIntegration(unittest.TestCase):
         args = {"vapid_private_key": T_PRIVATE,
                 "vapid_claims": claims}
         jclaims = json.dumps(args).replace(",", "\\,")
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:basic",
-            "SCENARIO_ARGS": [jclaims],
-        }, run=False)
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:basic",
+            (jclaims,),
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
     def test_basic_testplan(self):
         import aplt.runner as runner
-        lh = runner.run_testplan({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "TEST_PLAN": "aplt.scenarios:basic, 5, 5, 0",
-        }, run=False)
+        lh = runner.run_testplan([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:basic, 5, 5, 0",
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
 
     def test_spawn_testplan(self):
         import aplt.runner as runner
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:_test_spawn",
-            "SCENARIO_ARGS": [],
-        }, run=False)
+        h = runner.run_scenario([
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:_test_spawn",
+        ], run=False)
         d = Deferred()
         reactor.callLater(3, self._check_testplan_done, h, d)
         return d
 
     def test_spawn_multiple_testplan(self):
         import aplt.runner as runner
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:_test_multiple_spawn",
-            "SCENARIO_ARGS": [],
-        }, run=False)
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:_test_multiple_spawn",
+        ], run=False)
         d = Deferred()
         reactor.callLater(3, self._check_testplan_done, h, d)
         return d
 
     def test_basic_testplan_with_args(self):
         import aplt.runner as runner
-        lh = runner.run_testplan({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "TEST_PLAN": "aplt.scenarios:notification_forever, 5, 5, 0, 1, 1",
-        }, run=False)
-        d = Deferred()
-        reactor.callLater(0, self._check_testplan_done, lh, d)
-        return d
-
-    def test_basic_testplan_with_vapid(self):
-        import aplt.runner as runner
-        lh = runner.run_testplan({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "TEST_PLAN":
-                "aplt.scenarios:notification_forever, 5, 5, 0, 1, 1",
-            "SCENARIO_KWARGS": {'vapid_claims': {
-                "aud": "https://example.com",
-                "sub": "mailto:admin@example.com",
-                "exp": int(time.time()) + 86400}},
-        }, run=False)
+        lh = runner.run_testplan([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:notification_forever, 5, 5, 0, 1, 1",
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
 
     def test_wait_twice(self):
         import aplt.runner as runner
-        lh = runner.run_testplan({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "TEST_PLAN": "aplt.tests:_wait_multiple, 1, 1, 0",
-        }, run=False)
+        lh = runner.run_testplan([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.tests:_wait_multiple, 1, 1, 0",
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
 
     def test_stack_gens(self):
         import aplt.runner as runner
-        lh = runner.run_testplan({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "TEST_PLAN": "aplt.tests:_stack_gens, 1, 1, 0",
-        }, run=False)
+        lh = runner.run_testplan([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.tests:_stack_gens, 1, 1, 0",
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
 
     def test_class_method(self):
         import aplt.runner as runner
-        lh = runner.run_testplan({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "TEST_PLAN": "aplt.tests:Aclass.amethod, 1, 1, 0",
-        }, run=False)
+        lh = runner.run_testplan([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.tests:Aclass.amethod, 1, 1, 0",
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, lh, d)
         return d
@@ -191,49 +178,53 @@ class TestIntegration(unittest.TestCase):
     @raises(Exception)
     def test_bad_testplan(self):
         import aplt.runner as runner
-        runner.run_testplan({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "TEST_PLAN": "aplt.scenarios:basic, 5, 5",
-        }, run=False)
+        runner.run_testplan([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:basic, 5, 5",
+        ], run=False)
 
     @raises(Exception)
     def test_bad_load(self):
         import aplt.runner as runner
-        runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenaribasic",
-            "SCENARIO_ARGS": "",
-        }, run=False)
+        runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenaribasic",
+        ], run=False)
 
     def test_notification_forever(self):
         import aplt.runner as runner
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:notification_forever",
-            "SCENARIO_ARGS": ["0",  "1"],
-        }, run=False)
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:notification_forever",
+            '0', '1',
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
     def test_reconnect_forever(self):
         import aplt.runner as runner
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:reconnect_forever",
-            "SCENARIO_ARGS": ["0",  "1"],
-        }, run=False)
+
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:reconnect_forever",
+            '0', '1',  # args are broken into a list by parser.
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
 
     def test_expect_notifications(self):
         import aplt.runner as runner
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:_expect_notifications",
-            "SCENARIO_ARGS": [],
-        }, run=False)
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:_expect_notifications",
+        ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
         return d
@@ -242,11 +233,11 @@ class TestIntegration(unittest.TestCase):
         import aplt.runner as runner
         import aplt.scenarios as scenarios
         scenarios._RESTARTS = 0
-        h = runner.run_scenario({
-            "WEBSOCKET_URL": AUTOPUSH_SERVER,
-            "SCENARIO_FUNCTION": "aplt.scenarios:_explode",
-            "SCENARIO_ARGS": [],
-        }, run=False)
+        h = runner.run_scenario([
+            "--log_output=none",
+            "--websocket_url={}".format(AUTOPUSH_SERVER),
+            "aplt.scenarios:_explode",
+        ], run=False)
         f = Deferred()
         d = Deferred()
         eq_(scenarios._RESTARTS, 0)
@@ -264,7 +255,7 @@ class TestHarness(unittest.TestCase):
     def _make_harness(self):
         from aplt.runner import RunnerHarness, parse_statsd_args
         from aplt.scenarios import basic
-        client = parse_statsd_args({})
+        client = parse_statsd_args()
         self.rh = RunnerHarness(Mock(), AUTOPUSH_SERVER, basic, client)
         self.rh.metrics = client
         return self.rh

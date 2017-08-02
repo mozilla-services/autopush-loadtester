@@ -3,7 +3,6 @@ import logging
 import importlib
 import inspect
 import json
-import os
 import re
 import urlparse
 from collections import deque
@@ -14,19 +13,20 @@ from autobahn.twisted.websocket import (
     connectWS,
     WebSocketClientFactory
 )
-from docopt import docopt
+from configargparse import ArgumentParser
 from twisted.internet import reactor, ssl, task
 from twisted.python import log
 from twisted.web.client import Agent
 
-from aplt import __version__
+import aplt.metrics as metrics
 from aplt.client import (
     CommandProcessor,
     WSClientProtocol
 )
 from aplt.utils import UnverifiedHTTPS
 from aplt.vapid import Vapid
-import aplt.metrics as metrics
+from aplt.logobserver import AP_Logger
+
 
 # Necessary for latest version of txaio
 import txaio
@@ -84,7 +84,7 @@ class RunnerHarness(object):
                     "vapid_private_key"))
         else:
             self._vapid.generate_keys()
-        self._claims = None
+        self._claims = ()
         if "vapid_claims" in self._scenario_kw:
             self._claims = self._scenario_kw.get("vapid_claims")
 
@@ -119,12 +119,26 @@ class RunnerHarness(object):
         connectWS(self._factory, contextFactory=self._factory_context)
 
     def send_notification(self, processor, url, data, ttl, claims=None):
-        """Send out a notification to a url for a processor"""
+        """Send out a notification to a url for a processor
+
+        This uses the older `aesgcm` format.
+
+        """
         url = url.encode("utf-8")
         headers = {"TTL": str(ttl)}
         crypto_key = self._crypto_key
+        if claims is None:
+            claims = ()
         claims = claims or self._claims
         if self._vapid and claims:
+            if "aud" not in claims:
+                # Construct a valid `aud` from the known endpoint
+                parsed = urlparse.urlparse(url)
+                claims["aud"] = "{scheme}://{netloc}".format(
+                    scheme=parsed.scheme,
+                    netloc=parsed.netloc
+                )
+                log.msg("Setting VAPID 'aud' to {}".format(claims["aud"]))
             headers.update(self._vapid.sign(claims))
             crypto_key = "{};p256ecdsa={}".format(
                 crypto_key,
@@ -137,6 +151,7 @@ class RunnerHarness(object):
                 "Crypto-key": crypto_key,
                 "Encryption": self._encryption,
             })
+
         d = treq.post(url,
                       data=data,
                       headers=headers,
@@ -269,11 +284,16 @@ class LoadRunner(object):
         @property
         def finished(self):
             """Indicates whether or not the LoadRunner started, has run all the
-            calls it queued, and all the processors have finished"""
+            calls it queued, and all the processors have finished.
+
+            Processes in an error state may return -1, which can cause this to
+            endlessly loop.
+
+            """
             return all([
                 self._started,
                 self._queued_calls == 0,
-                all([x._processors == 0 for x in self._harnesses])
+                all([x._processors <= 0 for x in self._harnesses])
             ])
 
         def spawn(self, test_plan):
@@ -303,9 +323,11 @@ def locate_function(func_name):
     Format of func_name: <package/module>:<function>
 
     """
-    if ":" not in func_name:
-        raise Exception("Missing function designation")
-    module_path, object_path = func_name.split(":")
+    if ":" in func_name:
+        module_path, object_path = func_name.split(":")
+    else:
+        module_path = "aplt.scenarios"
+        object_path = func_name
     scenario = importlib.import_module(module_path)
     for bit in object_path.split("."):
         scenario = getattr(scenario, bit)
@@ -373,7 +395,6 @@ def parse_testplan(testplan):
 
 def parse_string_to_list(string):
     """Parse a string into a list of strings"""
-    # pull objects
     if string:
         string = re.sub("(?<!\\\\),", "\0", string)
         items = [x.strip() for x in string.strip().split("\0")]
@@ -382,22 +403,23 @@ def parse_string_to_list(string):
         return []
 
 
-def parse_statsd_args(args):
+def parse_statsd_args(args=None):
     """Parses statsd args out of a docopt arguments dict and returns a statsd
     client or None"""
-    namespace = args.get("--metric_namespace") or "push_test"
-    if args.get("--statsd_host"):
+    if args is None:
+        return metrics.SinkMetrics()
+    if args.statsd_host is not None:
         # We're using statsd
-        host = args.get("--statsd_host")
-        port = int(args.get("--statsd_port") or 8125)
-        return metrics.TwistedMetrics(host, port, namespace)
-    elif args.get("--datadog_api_key"):
+        return metrics.TwistedMetrics(args.statsd_host,
+                                      args.statsd_port,
+                                      args.metric_namespace)
+    elif args.datadog_api_key is not None:
         # We're using datadog
         return metrics.DatadogMetrics(
-            api_key=args.get("--datadog_api_key"),
-            app_key=args.get("--datadog_app_key"),
-            flush_interval=args.get("--datadog_flush_interval"),
-            namespace=namespace
+            api_key=args.datadog_api_key,
+            app_key=args.datadog_app_key,
+            flush_interval=args.datadog_flush_interval,
+            namespace=args.metric_namespace
         )
     else:
         # Metric sink
@@ -405,22 +427,19 @@ def parse_statsd_args(args):
 
 
 def parse_endpoint_args(args):
-    endpoint = args.get("--endpoint")
+    endpoint = args.endpoint
     if endpoint:
         url = urlparse.urlparse(endpoint)
         if (not (url.scheme or url.netloc) or
                 any(c != '/' for c in url.path) or
                 any(url[3:])):
             raise Exception("Invalid endpoint: " + endpoint)
-    cert = args.get("--endpoint_ssl_cert")
+    cert = args.endpoint_ssl_cert
+    key = args.endpoint_ssl_key
     if cert:
-        key = args.get("--endpoint_ssl_key")
-    else:
-        cert = os.environ.get("ENDPOINT_SSL_CERT")
-        if cert and cert.startswith(PEM_FILE_HEADER):
+        if cert.startswith(PEM_FILE_HEADER):
             cert = StringIO(cert)
-        key = os.environ.get("ENDPOINT_SSL_KEY")
-        if key and key.startswith(PEM_FILE_HEADER):
+        if key.startswith(PEM_FILE_HEADER):
             key = StringIO(cert)
     return endpoint, cert, key
 
@@ -429,33 +448,124 @@ def group_kw_args(*args):
     """Divvy up argument hashes and single values into args and kwargs."""
     kw_args = {}
     argList = []
-    # args may contain a list of items (e.g. (['1', '0'],)
-    for a in args:
-        for p in a:
-            if isinstance(p, str) and p[0] == '{':
-                kw_args.update(json.loads(p.replace("\\,", ",")))
-                continue
-            if isinstance(p, dict):
-                kw_args.update(p)
-                continue
-            argList.append(p)
+    if not args:
+        return argList, kw_args
+
+    # args may be a json encoded block:
+    for arg in args:
+        try:
+            items = json.loads(arg)
+            if isinstance(items, dict):
+                kw_args.update(json.loads(arg))
+            if isinstance(items, list):
+                argList.extend(items)
+            continue
+        except (ValueError, TypeError):
+            pass  # probably not JSON, so move on.
+        if isinstance(arg, list):
+            argList.extend(arg)
+            continue
+        if isinstance(arg, dict):
+            kw_args.update(arg)
+            continue
     return argList, kw_args
+
+
+def val_to_level(val):
+    try:
+        val = logging._checkLevel(val)
+        val = int(round(val/10)) * 10
+    except (ValueError, TypeError):
+        val = logging.INFO
+    return val
+
+
+def parse_common_args(parser):
+    """Shared arguments for `run_scenario` and `run_testplan`"""
+    parser.add_argument("-u", "--websocket_url",
+                        help="Websocket URL path",
+                        type=str,
+                        default="wss://push.services.mozilla.com")
+    parser.add_argument("--metric_namespace",
+                        help="namespace for metric collection",
+                        env_var="METRIC_NAMESPACE",
+                        default="push_test")
+    parser.add_argument("--statsd_host",
+                        help="host for metric collection",
+                        env_var="STATSD_HOST")
+    parser.add_argument("--statsd_port",
+                        default=8125,
+                        type=int,
+                        help="port on statsd_host for metric collection",
+                        env_var="STATSD_PORT")
+    parser.add_argument("--datadog_api_key",
+                        help="datadog API key",
+                        env_var="DATADOG_API_KEY")
+    parser.add_argument("--datadog_app_key",
+                        help="datadog application key",
+                        env_var="DATADOG_APP_KEY")
+    parser.add_argument("--datadog_flush_interval",
+                        type=int,
+                        help="period (in secs) before datadog data flushed",
+                        env_var="DATADOG_FLUSH_INTERVAL")
+    parser.add_argument("-e", "--endpoint",
+                        help="push notification endpoint override URL",
+                        env_var="ENDPOINT")
+    parser.add_argument("--endpoint_ssl_cert",
+                        help="path to custom TLS cert for endpoint",
+                        env_var="ENDPOINT_SSL_CERT")
+    parser.add_argument("--endpoint_ssl_key",
+                        help="path to custom TLS key for endpoint",
+                        env_var="ENDPOINT_SSL_KEY")
+    parser.add_argument("--log_name",
+                        help="log prefix name",
+                        env_var="LOG_NAME",
+                        default="push_test")
+    parser.add_argument("--log_level",
+                        help="minimum log level to report (debug, info, warn,"
+                             "error, critical)",
+                        env_var="LOG_LEVEL",
+                        default="info")
+    parser.add_argument("--log_format",
+                        help="format for log output (default, human, json)",
+                        env_var="LOG_FORMAT",
+                        default="default")
+    parser.add_argument("--log_output",
+                        help="output target for log info (stdout, none, path)",
+                        default="stdout",
+                        env_var="LOG_OUTPUT")
+
+
+def parse_scenario_args(args):
+    parser = ArgumentParser(
+        description="Run a scenario",
+        default_config_files=["config.ini"],
+        args_for_setting_config_path=["-c", "--config"],
+    )
+    parse_common_args(parser)
+    parser.add_argument("scenario")
+    parser.add_argument("scenario_args", nargs="*",
+                        help="Arguments for the specific scenario")
+    return parser.parse_args(args)
 
 
 def run_scenario(args=None, run=True):
     """Run a scenario
 
     Usage:
-        aplt_scenario WEBSOCKET_URL SCENARIO_FUNCTION [SCENARIO_ARGS ...]
+        aplt_scenario SCENARIO_FUNCTION [WEBSOCKET_URL] [SCENARIO_ARGS ...]
                       [--metric_namespace=METRIC_NAMESPACE]
                       [--statsd_host=STATSD_HOST]
                       [--statsd_port=STATSD_PORT]
                       [--datadog_api_key=DD_API_KEY]
                       [--datadog_app_key=DD_APP_KEY]
                       [--datadog_flush_interval=DD_FLUSH_INTERVAL]
-                      [--endpoint=URL]
+                      [-e URL --endpoint=URL]
                       [--endpoint_ssl_cert=SSL_CERT]
                       [--endpoint_ssl_key=SSL_KEY]
+                      [--log_level=LOG_LEVEL]
+                      [--log_format=LOG_FORMAT]
+                      [--log_output=LOG_OUTPUT]
 
     Other environment variables:
     ENDPOINT_SSL_CERT: like --endpoint_ssl_cert, but see below
@@ -466,23 +576,36 @@ def run_scenario(args=None, run=True):
     optionally the contents of the PEM files themselves.
 
     """
-    arguments = args or docopt(run_scenario.__doc__, version=__version__)
-    arg = arguments["SCENARIO_FUNCTION"]
+
+    arguments = parse_scenario_args(args)
+    # set some reasonable defaults.
+    arg = arguments.scenario
     scenario = locate_function(arg)
     statsd_client = parse_statsd_args(arguments)
-    scenario_args, scenario_kw = group_kw_args(arguments["SCENARIO_ARGS"])
-    scenario_args = try_int_list_coerce(scenario_args)
-    verify_arguments(scenario, *scenario_args, **scenario_kw)
+    scenario_args = []
+    scenario_kw = {}
+    if arguments.scenario_args:
+        scenario_args, scenario_kw = group_kw_args(arguments.scenario_args)
+        scenario_args = try_int_list_coerce(scenario_args)
+        verify_arguments(scenario, *scenario_args, **scenario_kw)
     endpoint, ssl_cert, ssl_key = parse_endpoint_args(arguments)
 
+    # this is a smoke test, so only run one instance once.
     plan = ([scenario, 1, 1, 0] + [(scenario_args, scenario_kw)])
     testplans = [plan]
 
-    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
+    lh = LoadRunner(testplans, statsd_client, arguments.websocket_url,
                     endpoint, ssl_cert, ssl_key)
-    observer = log.PythonLoggingObserver()
+    if arguments.log_format:
+        observer = AP_Logger(arguments.log_name,
+                             arguments.log_level,
+                             arguments.log_format,
+                             arguments.log_output)
+        observer.start()
+    else:
+        observer = log.PythonLoggingObserver()
     log.startLoggingWithObserver(observer.emit, False)
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=val_to_level(arguments.log_level))
     statsd_client.start()
     lh.metrics = statsd_client
     lh.start()
@@ -494,12 +617,26 @@ def run_scenario(args=None, run=True):
     else:
         return lh
 
+    if isinstance(observer, AP_Logger):
+        observer.stop()
+
+
+def parse_testplan_args(args):
+    parser = ArgumentParser(
+        description="Run a scenario",
+        default_config_files=["config.ini"],
+        args_for_setting_config_path=["-c", "--config"],
+    )
+    parse_common_args(parser)
+    parser.add_argument("test_plan")
+    return parser.parse_args(args)
+
 
 def run_testplan(args=None, run=True):
     """Run a testplan
 
     Usage:
-        aplt_testplan WEBSOCKET_URL TEST_PLAN
+        aplt_testplan TEST_PLAN WEBSOCKET_URL
                       [--metric_namespace=METRIC_NAMESPACE]
                       [--statsd_host=STATSD_HOST]
                       [--statsd_port=STATSD_PORT]
@@ -541,11 +678,11 @@ def run_testplan(args=None, run=True):
     optionally the contents of the PEM files themselves.
 
     """
-    arguments = args or docopt(run_testplan.__doc__, version=__version__)
-    testplans = parse_testplan(arguments["TEST_PLAN"])
+    arguments = parse_testplan_args(args)
+    testplans = parse_testplan(arguments.test_plan)
     statsd_client = parse_statsd_args(arguments)
     endpoint, ssl_cert, ssl_key = parse_endpoint_args(arguments)
-    lh = LoadRunner(testplans, statsd_client, arguments["WEBSOCKET_URL"],
+    lh = LoadRunner(testplans, statsd_client, arguments.websocket_url,
                     endpoint, ssl_cert, ssl_key)
     observer = log.PythonLoggingObserver()
     log.startLoggingWithObserver(observer.emit, False)
