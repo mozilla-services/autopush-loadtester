@@ -137,19 +137,21 @@ def notification_forever(notif_delay=30, run_once=0):
             break
 
 
-def notification_forever_stored(qty_stored=1000, ttl=300, flood_delay=30,
-                                notif_delay=30, run_once=0):
-    """Connects, then repeats every delay interval:
-    1. register
-    2. send notifications x qty_stored (# of notifications to store)
-    3. wait for flood_delay (seconds)
+def notification_forever_stored(qty_stored=32, ttl=300, notif_delay=30,
+                                run_once=0):
+    """Connects, registers, disconnects and then repeats every delay interval:
+    1. send notifications x qty_stored (# of notifications to store)
+    2. wait for flood_delay (seconds)
+    3. connects
     4. receive notifications x qty_stored
 
     Repeats forever.
     """
     yield connect()
-    yield hello(None)
+    response = yield hello(None)
     reg, endpoint = yield register(random_channel_id())
+    uaid = response["uaid"]
+    yield disconnect()
 
     while True:
         message_ids = []
@@ -158,18 +160,74 @@ def notification_forever_stored(qty_stored=1000, ttl=300, flood_delay=30,
         for i in range(qty_stored):
             response, content = yield send_notification(endpoint, data, ttl)
             yield counter("notification.throughput.bytes", length)
-            yield counter("notification.sent", i)
-            notif = yield expect_notification(reg["channelID"], ttl)
-            yield counter("notification.received", 1)
-            message_ids.append(notif["version"])
+            yield counter("notification.sent", 1)
+
+        yield wait(5)
+
+        yield connect()
+        response = yield hello(uaid)
+        assert response["uaid"] == uaid
+
+        while True:
+            # Pull as many notifications as we can get
+            notif = yield expect_notification(reg["channelID"], 2)
+            if notif:
+                yield counter("notification.received", 1)
+                message_ids.append(notif["version"])
+
+            if message_ids:
+                while message_ids:
+                    message_id = message_ids.pop()
+                    yield ack(channel_id=reg["channelID"], version=message_id)
+                    yield counter("notification.ack", 1)
+            else:
+                break
+
+        if run_once:
+            yield unregister(reg["channelID"])
+            yield disconnect()
+            break
+        else:
+            yield disconnect()
             yield wait(notif_delay)
 
-        yield wait(flood_delay)
 
-        for i in range(qty_stored):
-            yield ack(channel_id=notif["channelID"], version=message_ids[i])
-            yield counter("notification.ack", i)
-            yield wait(notif_delay)
+def notification_forever_direct_store(cycle_delay=10, run_once=0):
+    """Connects, registers, then repeats the following steps even cycle
+    delay:
+    1. send notification
+    2. receive notification
+    3. disconnect
+    4. wait cycle_delay
+    5. connect
+    6. receive notification
+    7. ack notification
+
+    """
+    yield connect()
+    response = yield hello(None)
+    reg, endpoint = yield register(random_channel_id())
+    uaid = response["uaid"]
+    ttl = 600
+
+    while True:
+        length, data = random_data(min_length=2048, max_length=4096)
+        response, content = yield send_notification(endpoint, data, ttl)
+        yield counter("notification.throughput.bytes", length)
+        yield counter("notification.sent", 1)
+        notif = yield expect_notification(reg["channelID"], 2)
+        if not notif:
+            raise Exception("Needed notification")
+
+        yield disconnect()
+        yield wait(cycle_delay)
+        yield connect()
+        resp = yield hello(uaid)
+        assert resp["uaid"] == uaid
+        notif = yield expect_notification(reg["channelID"], 10)
+        if not notif:
+            raise Exception("Needed notification")
+        yield ack(channel_id=reg["channelID"], version=notif["version"])
 
         if run_once:
             yield unregister(reg["channelID"])
