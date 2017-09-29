@@ -170,7 +170,8 @@ class CommandProcessor(object, policies.TimeoutMixin):
     def register(self, command):
         """Send the register command to the server"""
         self._send_json(dict(messageType="register",
-                             channelID=command.channel_id))
+                             channelID=command.channel_id,
+                             key=command.key))
 
     def unregister(self, command):
         """Send the unregister command to the server"""
@@ -181,7 +182,8 @@ class CommandProcessor(object, policies.TimeoutMixin):
         """Send a notification to the given endpoint URL"""
         self._harness.send_notification(self, url=command.endpoint_url,
                                         data=command.data,
-                                        ttl=command.ttl)
+                                        ttl=command.ttl,
+                                        claims=command.claims)
 
     def expect_notification(self, command):
         """Expect a notification to arrive, if its already arrived then act

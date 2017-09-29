@@ -1,0 +1,38 @@
+; sample configuration file. This file should contain values that may be
+; used in one or more scenario runs.
+;
+; ## Statistics
+;
+; The namespace to use for collection of metrics.
+# metric_namepace = aplt
+;
+; Hostname for the statsd collection server
+# statsd_hostname =
+;
+; Port fort the statsd collection server
+# statsd_port =
+;
+; Datadog configuration values
+# datadog_api_key =
+# datadog_flush_interval =
+;
+; Custom endpoint SSL cert information
+# endpoint =
+# endpoint_ssl_cert =
+# endpoint_ssl_key =
+;
+; Log level (debug/info/warn/error/critical)
+# log_level = info
+;
+; How to format the log output
+;  default = standard python logging output
+;  json = each logging message is a JSON structure
+;  human = messages are more "human" readable.
+# log_format=default
+;
+; Where should the output be printed
+;   stdio = Standard IO
+;   none = No output should be printed
+;   filepath = The path to a logging file (e.g. "out.log")
+# log_output=stdio
+
