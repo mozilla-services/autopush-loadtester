@@ -367,7 +367,8 @@ def try_int_list_coerce(lst):
         try:
             new_lst.append(int(p))
         except (ValueError, TypeError):
-            new_lst.append(p)
+            # This is not an int. Ignore it.
+            continue
     return new_lst
 
 
@@ -586,6 +587,9 @@ def run_scenario(args=None, run=True):
     scenario_kw = {}
     if arguments.scenario_args:
         scenario_args, scenario_kw = group_kw_args(arguments.scenario_args)
+        # override the --websocket_url if the older argument form is used.
+        if str(scenario_args[0]).startswith('ws'):
+            arguments.websocket_url = scenario_args.pop()
         scenario_args = try_int_list_coerce(scenario_args)
         verify_arguments(scenario, *scenario_args, **scenario_kw)
     endpoint, ssl_cert, ssl_key = parse_endpoint_args(arguments)
