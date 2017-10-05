@@ -221,9 +221,9 @@ class TestIntegration(unittest.TestCase):
     def test_expect_notifications(self):
         import aplt.runner as runner
         h = runner.run_scenario([
-            "--log_output=none",
-            "--websocket_url={}".format(AUTOPUSH_SERVER),
             "aplt.scenarios:_expect_notifications",
+            AUTOPUSH_SERVER,
+            "--log_output=none",
         ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
@@ -284,7 +284,7 @@ class TestRunnerFunctions(unittest.TestCase):
     def test_verify_func_too_many_args(self):
         from aplt.runner import verify_arguments
         from aplt.scenarios import connect_and_idle_forever
-        verify_arguments(connect_and_idle_forever, "extra_arg")
+        verify_arguments(connect_and_idle_forever, 0, 0, "extra_arg")
 
     @raises(Exception)
     def test_verify_func_short_an_arg(self):
