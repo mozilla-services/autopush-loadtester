@@ -54,6 +54,8 @@ class AP_Logger(object):
                 return
             if log_output.lower() == "stdout":
                 self._output = sys.stdout
+            if log_output.lower() == "buffer":
+                self._output = io.StringIO()
             else:
                 self._filename = log_output
         try:
@@ -84,17 +86,29 @@ class AP_Logger(object):
             ev)
 
     def json_format(self, event):
-        ev = formatEvent(event)
-        for item in ['format', 'log_source', 'log_factory', 'log_legacy',
-                     'log_text', 'log_format',
-                     'log_namespace', 'factory', 'log_logger', 'message']:
-            if item in event:
-                del(event[item])
-        if 'reason' in event:
-            event['reason'] = repr(event['reason'])
-        event['message'] = ev
-        event['log_level'] = event['log_level'].name
-        return json.dumps(event)
+        lev = dict()
+        keys = event.keys()
+        for key in keys:
+            if key in ['format', 'log_source', 'log_factory', 'log_legacy',
+                       'log_text', 'log_format',
+                       'log_namespace', 'factory', 'log_logger']:
+                continue
+            if key == 'log_level':
+                lev[key] = event[key].name
+                continue
+            if (key in ['reason', 'message', 'failure'] and
+                    not isinstance(event[key], str)):
+                lev[key] = repr(event[key])
+                continue
+            lev[key] = event[key]
+        return json.dumps(lev, skipkeys=True)
+
+    def dump(self):
+        try:
+            self._output.seek(0)
+            return self._output.readlines()
+        except IOError:
+            return []
 
     def start(self):
         if self._filename:

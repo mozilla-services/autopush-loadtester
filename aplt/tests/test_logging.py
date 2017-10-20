@@ -59,14 +59,14 @@ class TestLogger(unittest.TestCase):
                      time=time.time(),
                      log_text='Log opened.',
                      log_format=u'{log_text}',
-                     message=('Log opened.',),
+                     message='Log opened.',
                      isError=0,
                      reason='some reason',
                      )
         obj.emit(event)
         buff.seek(0)
         out = json.loads(buff.read())
-        eq_(out['log_level'], event['log_level'])
+        eq_(out['log_level'], event['log_level'].name)
         eq_(out['message'], event['message'])
         eq_(out['isError'], event['isError'])
         eq_(out['reason'], event['reason'])
