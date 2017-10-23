@@ -611,6 +611,7 @@ def run_scenario(args=None, run=True):
     log.startLoggingWithObserver(observer.emit, False)
     logging.basicConfig(level=val_to_level(arguments.log_level))
     statsd_client.start()
+    lh.logging = observer
     lh.metrics = statsd_client
     lh.start()
 

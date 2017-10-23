@@ -46,14 +46,35 @@ class TestIntegration(unittest.TestCase):
             return pool.closeCachedConnections()
 
     def test_basic_runner(self):
+        """Test the "basic" scenario.
+
+        This can be called via pytest using
+        `bin/pytest aplt/tests/__init__.py::TestIntegration::test_basic_runner`
+
+        Use `check_log` to examine the produced log file for whatever values
+        you need.
+
+        """  # pragma noqa
         import aplt.runner as runner
         h = runner.run_scenario([
-            "--log_output=none",
+            "--log_format=json",
+            "--log_output=buffer",  # send the output to a string buffer
             "--websocket_url={}".format(AUTOPUSH_SERVER),
             "aplt.scenarios:basic",
         ], run=False)
+
+        def check_log(success):
+            """Check the captured output log for whatever content your
+            looking for
+
+            """
+            dump = h.logging.dump()
+            assert len(dump) > 0
+            # Additional checks here...
+
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
+        d.addCallback(check_log)
         return d
 
     def test_basic_with_vapid(self):

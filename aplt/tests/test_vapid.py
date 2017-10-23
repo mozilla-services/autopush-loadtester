@@ -34,7 +34,7 @@ T_PUBLIC_RAW = """EJwJZq_GN8jJbo1GGpyU70hmP2hbWAUpQFKDBy\
 KB81yldJ9GTklBM5xqEwuPM7VuQcyiLDhvovthPIXx-gsQRQ=="""
 
 
-def setUp(self):
+def setup_module(self):
     ff = open('/tmp/private', 'w')
     ff.write(T_PRIVATE_PEM)
     ff.close()
@@ -43,7 +43,7 @@ def setUp(self):
     ff.close()
 
 
-def tearDown(self):
+def teardown_module(self):
     os.unlink('/tmp/private')
     os.unlink('/tmp/public')
 
