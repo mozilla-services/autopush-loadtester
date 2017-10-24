@@ -34,7 +34,7 @@ T_PUBLIC_RAW = """EJwJZq_GN8jJbo1GGpyU70hmP2hbWAUpQFKDBy\
 KB81yldJ9GTklBM5xqEwuPM7VuQcyiLDhvovthPIXx-gsQRQ=="""
 
 
-def setup_module(self):
+def setUp():
     ff = open('/tmp/private', 'w')
     ff.write(T_PRIVATE_PEM)
     ff.close()
@@ -43,12 +43,23 @@ def setup_module(self):
     ff.close()
 
 
-def teardown_module(self):
-    os.unlink('/tmp/private')
-    os.unlink('/tmp/public')
+def tearDown():
+    try:
+        os.unlink('/tmp/private')
+        os.unlink('/tmp/public')
+    except OSError:
+        pass
 
 
 class VapidTestCase(unittest.TestCase):
+    @classmethod
+    def setup_class(cls):
+        setUp()
+
+    @classmethod
+    def tearDownClass(cls):
+        tearDown()
+
     def test_init(self):
         v1 = Vapid(private_key_file="/tmp/private")
         eq_(v1.private_key.to_pem(), T_PRIVATE_PEM)

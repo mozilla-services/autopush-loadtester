@@ -4,7 +4,6 @@ import unittest
 import io
 import json
 import time
-from nose.tools import eq_
 
 from twisted.logger import (
     formatEventAsClassicLogText
@@ -22,25 +21,32 @@ class TestLogger(unittest.TestCase):
 
     def test_init(self):
         obj = AP_Logger("test")
-        eq_(obj._output, sys.stdout)
-        eq_(obj.format_event, obj.json_format)
+        assert obj._output == sys.stdout
+        assert obj.format_event == obj.json_format
 
         filename = os.tempnam()
         fobj = AP_Logger("test", log_format="human",
                          log_output=filename)
         fobj.start()
-        eq_(fobj._filename, filename)
-        eq_(fobj.format_event, fobj.human_format)
+        assert fobj._filename == filename
+        assert fobj.format_event == fobj.human_format
 
         obj = AP_Logger("test", log_format="human", log_output="none")
         obj.start()
-        eq_(obj._output, None)
-        eq_(obj._filename, None)
+        assert obj._output is None
+        assert obj._filename is None
+        obj.stop()
+        fobj.stop()
+
+        obj = AP_Logger("test", log_format="human", log_output="stdout")
+        obj.start()
+        assert obj._output == sys.stdout
+        assert obj._filename is None
         obj.stop()
         fobj.stop()
 
         obj = AP_Logger("test", log_format="unknown")
-        eq_(obj.format_event, formatEventAsClassicLogText)
+        assert obj.format_event == formatEventAsClassicLogText
 
     def test_emit(self):
         buff = io.StringIO()
@@ -61,12 +67,12 @@ class TestLogger(unittest.TestCase):
                      log_format=u'{log_text}',
                      message='Log opened.',
                      isError=0,
-                     reason='some reason',
+                     reason=dict(cause='some reason'),
                      )
         obj.emit(event)
         buff.seek(0)
         out = json.loads(buff.read())
-        eq_(out['log_level'], event['log_level'].name)
-        eq_(out['message'], event['message'])
-        eq_(out['isError'], event['isError'])
-        eq_(out['reason'], event['reason'])
+        assert out['log_level'] == event['log_level'].name
+        assert out['message'] == event['message']
+        assert out['isError'] == event['isError']
+        assert out['reason'] == repr(event['reason'])

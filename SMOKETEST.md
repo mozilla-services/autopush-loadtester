@@ -12,12 +12,15 @@ exercise.
 
 For example:
 ``` shell
-bin/aplt_scenario basic wss://push.services.mozilla.com/ --log_format=human
+bin/aplt_scenario --log_format=human basic \
+ wss://push.services.mozilla.com/ \
+ vapid_claims='{"sub":"mailto:foo@example.com"}'
 ```
 
 This will run the `basic` function from `aplt/scenarios.py`, targeting
 `wss://push.services.mozilla.com/` with `log_format` set to `human`
-readable.
+readable and use the provided VAPID claims dict. (`exp` and `aud` will
+be automatically inserted into the VAPID claims.)
 
 `basic` will:
  * create a new subscription locked to a VAPID endpoint

@@ -52,9 +52,9 @@ class AP_Logger(object):
             if log_output.lower() == "none":
                 self.format_event = self.null_format
                 return
-            if log_output.lower() == "stdout":
+            elif log_output.lower() == "stdout":
                 self._output = sys.stdout
-            if log_output.lower() == "buffer":
+            elif log_output.lower() == "buffer":
                 self._output = io.StringIO()
             else:
                 self._filename = log_output
@@ -107,7 +107,7 @@ class AP_Logger(object):
         try:
             self._output.seek(0)
             return self._output.readlines()
-        except IOError:
+        except IOError:  # pragma: nocover
             return []
 
     def start(self):
