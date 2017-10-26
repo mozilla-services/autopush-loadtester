@@ -51,19 +51,21 @@ class CommandProcessor(object, policies.TimeoutMixin):
     valid_handlers = ["connect", "disconnect", "error", "hello",
                       "notification", "register", "unregister"]
 
-    def __init__(self, scenario, scenario_args, harness):
+    def __init__(self, scenario, scenario_args, scenario_kw, harness):
         self._harness = harness
         self._retries = getattr(scenario, "_retries", None)
         self._current_tries = 0
         self._scenario_func = scenario
         self._scenario_args = scenario_args
+        self._scenario_kw = scenario_kw
 
         self._reset()
 
     def _reset(self):
         """Reset for a startover or initialization"""
         # Setup the scenario
-        self._scenario = [self._scenario_func(*self._scenario_args)]
+        self._scenario = [self._scenario_func(*self._scenario_args,
+                                              **self._scenario_kw)]
 
         # Command processing
         self._last_command = None
@@ -122,7 +124,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
             else:
                 self._scenario.pop()
                 reactor.callLater(0, self._send_command_result, None)
-        except:
+        except Exception:
             log.err()
             self.shutdown(ended=False)
 
@@ -141,7 +143,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
 
         try:
             command_func(command)
-        except:
+        except Exception:
             self._send_exception()
 
     def spawn(self, command):
@@ -327,7 +329,7 @@ class CommandProcessor(object, policies.TimeoutMixin):
             # scenario.
             try:
                 self._raise_unexpected_event(data)
-            except:
+            except Exception:
                 self._send_exception()
 
         if "connect" in message_type:

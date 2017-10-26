@@ -79,12 +79,11 @@ class TestIntegration(unittest.TestCase):
 
     def test_basic_with_vapid(self):
         import aplt.runner as runner
-        claims = {"sub": "mailto:admin@example.com"}
         h = runner.run_scenario([
             "--log_output=none",
             "--websocket_url={}".format(AUTOPUSH_SERVER),
             "aplt.scenarios:basic",
-            (json.dumps({"vapid_claims": claims}),),
+            """vapid_claims={"sub": "mailto:admin@example.com"}""",
         ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)
@@ -114,7 +113,7 @@ class TestIntegration(unittest.TestCase):
             "--log_output=none",
             "--websocket_url={}".format(AUTOPUSH_SERVER),
             "aplt.scenarios:basic",
-            (jclaims,),
+            jclaims,
         ], run=False)
         d = Deferred()
         reactor.callLater(0, self._check_testplan_done, h, d)

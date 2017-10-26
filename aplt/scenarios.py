@@ -35,10 +35,11 @@ from aplt.utils import bad_push_endpoint
 # the equivalent of calling `scenario(reconnect_delay=0, run_once=1)` )
 ##############################################################################
 
-def basic(*args):
+def basic(*args, **kwargs):
     """Connects, sends a notification, than disconnects"""
 
     sc_args, sc_kw = group_kw_args(*args)
+    sc_kw.update(kwargs)
 
     # open up the connection
     yield connect()

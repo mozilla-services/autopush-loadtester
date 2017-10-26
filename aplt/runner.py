@@ -54,6 +54,7 @@ class RunnerHarness(object):
                  endpoint_ssl_key=None,
                  *scenario_args,
                  **scenario_kw):
+        logging.debug("Connecting to {}".format(websocket_url))
         self._factory = WebSocketClientFactory(
             websocket_url,
             headers={"Origin": "http://localhost:9000"})
@@ -104,7 +105,10 @@ class RunnerHarness(object):
     def run(self):
         """Start registered scenario"""
         # Create the processor and start it
-        processor = CommandProcessor(self._scenario, self._scenario_args, self)
+        processor = CommandProcessor(self._scenario,
+                                     self._scenario_args,
+                                     self._scenario_kw,
+                                     self)
         processor.run()
         self._processors += 1
 
@@ -131,6 +135,8 @@ class RunnerHarness(object):
             claims = ()
         claims = claims or self._claims
         if self._vapid and claims:
+            if isinstance(claims, str):
+                claims = json.loads(claims)
             if "aud" not in claims:
                 # Construct a valid `aud` from the known endpoint
                 parsed = urlparse.urlparse(url)
@@ -449,26 +455,27 @@ def group_kw_args(*args):
     """Divvy up argument hashes and single values into args and kwargs."""
     kw_args = {}
     argList = []
+    req = re.compile("^(\w+)=(.+)")
     if not args:
         return argList, kw_args
 
     # args may be a json encoded block:
     for arg in args:
         try:
-            items = json.loads(arg)
-            if isinstance(items, dict):
-                kw_args.update(json.loads(arg))
-            if isinstance(items, list):
-                argList.extend(items)
-            continue
+            arg = json.loads(arg)
         except (ValueError, TypeError):
-            pass  # probably not JSON, so move on.
-        if isinstance(arg, list):
-            argList.extend(arg)
-            continue
+            # could be a key=value.
+            kv = req.match(str(arg))
+            if kv:
+                kvg = kv.groups()
+                kw_args[kvg[0]] = kvg[1]
+                continue
         if isinstance(arg, dict):
             kw_args.update(arg)
-            continue
+        elif isinstance(arg, list):
+            argList.extend(arg)
+        else:
+            argList.append(arg)
     return argList, kw_args
 
 
@@ -586,10 +593,13 @@ def run_scenario(args=None, run=True):
     scenario_args = []
     scenario_kw = {}
     if arguments.scenario_args:
-        scenario_args, scenario_kw = group_kw_args(arguments.scenario_args)
+        scenario_args, scenario_kw = group_kw_args(*arguments.scenario_args)
         # override the --websocket_url if the older argument form is used.
-        if str(scenario_args[0]).startswith('ws'):
-            arguments.websocket_url = scenario_args.pop()
+        try:
+            if str(scenario_args[0]).startswith('ws'):
+                arguments.websocket_url = scenario_args.pop()
+        except (IndexError, TypeError):
+            pass
         scenario_args = try_int_list_coerce(scenario_args)
         verify_arguments(scenario, *scenario_args, **scenario_kw)
     endpoint, ssl_cert, ssl_key = parse_endpoint_args(arguments)
@@ -616,8 +626,8 @@ def run_scenario(args=None, run=True):
     lh.start()
 
     if run:
-        l = task.LoopingCall(check_loadrunner, lh)
-        reactor.callLater(1, l.start, 1)
+        loop = task.LoopingCall(check_loadrunner, lh)
+        reactor.callLater(1, loop.start, 1)
         reactor.run()
     else:
         return lh
@@ -697,8 +707,8 @@ def run_testplan(args=None, run=True):
     lh.start()
 
     if run:
-        l = task.LoopingCall(check_loadrunner, lh)
-        reactor.callLater(1, l.start, 1)
+        loop = task.LoopingCall(check_loadrunner, lh)
+        reactor.callLater(1, loop.start, 1)
         reactor.run()
     else:
         return lh
