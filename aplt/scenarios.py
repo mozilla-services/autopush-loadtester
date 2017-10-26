@@ -173,7 +173,7 @@ def register_forever(reg_delay=30, run_once=0):
             break
 
 
-def notification_forever(notif_delay=30, run_once=0):
+def notification_forever(notif_delay=30, run_once=0, vapid_claims=None):
     """Connects, then repeats every delay interval:
     1. send notification
     2. receive notification
@@ -188,7 +188,8 @@ def notification_forever(notif_delay=30, run_once=0):
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
         yield timer_start("update.latency")
-        response, content = yield send_notification(endpoint, data, 60)
+        response, content = yield send_notification(endpoint, data, 60,
+                                                    claims=vapid_claims)
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
         notif = yield expect_notification(reg["channelID"], 5)

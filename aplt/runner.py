@@ -390,7 +390,7 @@ def parse_testplan(testplan):
                             "arguments, only got: %s" % (func_name, parts))
         func = locate_function(func_name)
         # command line args come in as strings.
-        int_args, kw_args = group_kw_args(parts)
+        int_args, kw_args = group_kw_args(*parts)
         int_args = try_int_list_coerce(int_args)
         func_args = int_args[3:]
         verify_arguments(func, *func_args, **kw_args)
@@ -446,7 +446,7 @@ def parse_endpoint_args(args):
     if cert:
         if cert.startswith(PEM_FILE_HEADER):
             cert = StringIO(cert)
-        if key.startswith(PEM_FILE_HEADER):
+        if key and key.startswith(PEM_FILE_HEADER):
             key = StringIO(cert)
     return endpoint, cert, key
 
@@ -465,10 +465,14 @@ def group_kw_args(*args):
             arg = json.loads(arg)
         except (ValueError, TypeError):
             # could be a key=value.
-            kv = req.match(str(arg))
-            if kv:
-                kvg = kv.groups()
-                kw_args[kvg[0]] = kvg[1]
+            match = req.match(str(arg))
+            if match:
+                mk, mv = match.groups()
+                try:
+                    mv = json.loads(mv)
+                except (ValueError, TypeError):
+                    pass
+                kw_args[mk] = mv
                 continue
         if isinstance(arg, dict):
             kw_args.update(arg)
