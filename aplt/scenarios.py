@@ -100,6 +100,106 @@ def basic(*args, **kwargs):
     yield disconnect()
 
 
+def test_1070(*args, **kwargs):
+    """Test that un-acked messages are redelivered.
+
+    See issue #1070 for details.
+
+    """
+    sc_args, sc_kw = group_kw_args(*args)
+    sc_kw.update(kwargs)
+
+    ttl = 600
+    idle = 5
+    log.msg("### Opening connection")
+    yield connect()
+    resp = yield hello(None)
+    uaid = resp["uaid"]
+
+    log.msg("### Registering channel")
+    channel_id = random_channel_id()
+    reg, endpoint = yield register(channel_id=channel_id)
+    yield disconnect()
+
+    data_template = "Test message {:02d}"
+    log.msg("### Sending first batch of messages")
+    for i in range(0, 10):
+        data = data_template.format(i)
+        resp, cont = yield send_notification(endpoint_url=endpoint,
+                                             data=data,
+                                             ttl=ttl)
+        assert resp.code == 201
+
+    log.msg("### Pretend to be busy elsewhere")
+    yield wait(idle)
+
+    log.msg("### Reconnecting")
+    yield connect()
+    yield hello(uaid)
+    notifications = []
+    log.msg("### Fetching pending messages")
+    while True:
+        notif = yield expect_notification(channel_id=reg["channelID"],
+                                          time=1)
+        if not notif:
+            break
+        log.msg("Recv'd message with data: {}".format(
+            base64.b64decode(notif['data'])))
+        notifications.append(notif)
+
+    # Make sure we got all of them.
+    assert len(notifications) == 10
+    log.msg("### All pending messages recv'd, going offline again")
+    yield disconnect()
+
+    # add a bunch more...
+    log.msg("### Sending more messages")
+    for i in range(10, 15):
+        data = data_template.format(i)
+        yield send_notification(endpoint_url=endpoint,
+                                data=data,
+                                ttl=ttl)
+
+    # rinse and repeat
+    log.msg("### Pretend to be busy elsewhere")
+    yield wait(idle)
+    log.msg("### Reconnecting")
+    yield connect()
+    yield hello(uaid)
+    next_notifs = []
+    log.msg("### Fetching pending messages")
+    while True:
+        notif = yield expect_notification(channel_id=reg["channelID"],
+                                          time=1)
+        if not notif:
+            break
+        log.msg("Recv'd message with data: {}".format(
+            base64.b64decode(notif['data']))
+        )
+        next_notifs.append(notif)
+
+    assert len(next_notifs) == 10
+    log.msg("### Got all expected messages")
+    # and are they the original, unacked messages?
+    assert base64.b64decode(next_notifs[0]['data']) == data_template.format(0)
+    assert base64.b64decode(
+        next_notifs[9]['data']) == data_template.format(9)
+    log.msg("### And they're from the original ones we sent.")
+
+    log.msg("### Cleaning up...")
+    while True:
+        notif = yield expect_notification(channel_id=reg["channelID"],
+                                          time=1)
+        if not notif:
+            break
+        log.msg("Recv'd message with data: {}".format(
+            base64.b64decode(notif['data']))
+        )
+        ack(channel_id=notif['channelID'],
+            version=notif['version'])
+    yield disconnect()
+
+
 def connect_and_idle_forever():
     """Connects without ever disconnecting"""
     yield connect()
