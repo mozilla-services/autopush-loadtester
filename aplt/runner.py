@@ -14,6 +14,7 @@ from autobahn.twisted.websocket import (
     WebSocketClientFactory
 )
 from configargparse import ArgumentParser
+from py_vapid import Vapid
 from twisted.internet import reactor, ssl, task
 from twisted.python import log
 from twisted.web.client import Agent
@@ -24,7 +25,6 @@ from aplt.client import (
     WSClientProtocol
 )
 from aplt.utils import UnverifiedHTTPS
-from aplt.vapid import Vapid
 from aplt.logobserver import AP_Logger
 
 
@@ -145,11 +145,7 @@ class RunnerHarness(object):
                     netloc=parsed.netloc
                 )
                 log.msg("Setting VAPID 'aud' to {}".format(claims["aud"]))
-            headers.update(self._vapid.sign(claims))
-            crypto_key = "{};p256ecdsa={}".format(
-                crypto_key,
-                self._vapid.public_key_urlsafe_base64
-            )
+            headers.update(self._vapid.sign(claims, self._crypto_key))
         if data:
             headers.update({
                 "Content-Type": "application/octet-stream",

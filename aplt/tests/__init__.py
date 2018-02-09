@@ -10,6 +10,14 @@ from twisted.trial import unittest
 
 AUTOPUSH_SERVER = "wss://autopush.dev.mozaws.net/"
 
+# It's handy if this is readable, but the string shouldn't have
+# line breaks in it.
+T_PRIVATE = """
+MHcCAQEEIPeN1iAipHbt8+/KZ2NIF8NeN24jqAmnMLFZEMocY8RboAoGCCqGSM49
+AwEHoUQDQgAEEJwJZq/GN8jJbo1GGpyU70hmP2hbWAUpQFKDByKB81yldJ9GTklB
+M5xqEwuPM7VuQcyiLDhvovthPIXx+gsQRQ==
+""".replace("\n", "").replace("\r", "")
+
 
 def _wait_multiple():
     from aplt.commands import wait
@@ -102,7 +110,6 @@ class TestIntegration(unittest.TestCase):
 
         """
         import aplt.runner as runner
-        from aplt.tests.test_vapid import T_PRIVATE
         claims = {"aud": "https://example.com",
                   "sub": "mailto:admin@example.com",
                   "exp": int(time.time()) + 86400}
