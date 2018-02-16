@@ -1,6 +1,6 @@
 # Mozilla AutoPush Load-Tester
 
-FROM pypy:2-5.6.0-slim
+FROM pypy:2-5.10.0-slim
 
 MAINTAINER Ben Bangert <bbangert@mozilla.com>
 
