@@ -206,12 +206,11 @@ def notification_forever(notif_delay=30, run_once=0, vapid_claims=None):
 
 
 def notification_forever_stored(qty_stored=32, ttl=300, notif_delay=30,
-                                run_once=0):
+                                run_once=0, *args, **kwargs):
     """Connects, registers, disconnects and then repeats every delay interval:
     1. send notifications x qty_stored (# of notifications to store)
-    2. wait for flood_delay (seconds)
-    3. connects
-    4. receive notifications x qty_stored
+    2. connects
+    3. receive notifications x qty_stored
 
     Repeats forever.
     """
@@ -423,38 +422,46 @@ def loadtest():
         "aplt.scenarios:connect_and_idle_forever, %s, %s, %s"
         % (qty, stagger_delay, overall_delay))
 
+    # While not required, it's a good idea to label your arguments so
+    # you know how they're being applied by the function.
     yield spawn(
-        "aplt.scenarios:reconnect_forever, %s, %s, %s, %s, %s"
+        "aplt.scenarios:reconnect_forever, %s, %s, %s, "
+        "reconnect_delay=%s, run_once=%s"
         % (qty, stagger_delay, overall_delay, notif_delay, run_once))
 
     yield spawn(
-        "aplt.scenarios:register_forever, %s, %s, %s, %s, %s"
+        "aplt.scenarios:register_forever, %s, %s, %s, reg_delay=%s, "
+        "run_once=%s"
         % (qty, stagger_delay, overall_delay, notif_delay, run_once))
 
     yield spawn(
-        "aplt.scenarios:notification_forever, %s, %s, %s, %s, %s"
+        "aplt.scenarios:notification_forever, %s, %s, %s, notif_delay=%s, "
+        "run_once=%s"
         % (qty, stagger_delay, overall_delay, notif_delay, run_once))
 
     qty_stored = 30
     ttl = 300
-    flood_delay = 1
 
     yield spawn(
-        "aplt.scenarios:notification_forever_stored, \
-         %s, %s, %s, %s, %s, %s, %s, %s"
+        "aplt.scenarios:notification_forever_stored, "
+        "%s, %s, %s, qty_stored= %s, ttl=%s, notif_delay=%s, "
+        "run_once=%s"
         % (qty, stagger_delay, overall_delay, qty_stored,
-           ttl, flood_delay, notif_delay, run_once))
+           ttl, notif_delay, run_once))
 
     yield spawn(
-        "aplt.scenarios:notification_forever_unsubscribed, %s, %s, %s, %s, %s"
+        "aplt.scenarios:notification_forever_unsubscribed, %s, %s, %s, "
+        "notif_delay=%s, run_once=%s"
         % (qty, stagger_delay, overall_delay, notif_delay, run_once))
 
     yield spawn(
-        "aplt.scenarios:notification_forever_bad_tokens, %s, %s, %s, %s, %s"
+        "aplt.scenarios:notification_forever_bad_tokens, %s, %s, %s, "
+        "%s, run_once=%s"
         % (qty, stagger_delay, overall_delay, notif_delay, run_once))
 
     yield spawn(
-        "aplt.scenarios:notification_forever_bad_endpoints, %s, %s, %s, %s, %s"
+        "aplt.scenarios:notification_forever_bad_endpoints, %s, %s, %s, "
+        "notif_delay=%s, run_once=%s"
         % (qty, stagger_delay, overall_delay, notif_delay, run_once))
 
 

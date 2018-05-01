@@ -101,7 +101,11 @@ class AP_Logger(object):
                 lev[key] = repr(event[key])
                 continue
             lev[key] = event[key]
-        return json.dumps(lev, skipkeys=True)
+        try:
+            return json.dumps(lev, skipkeys=True)
+        except TypeError as ex:
+            print("Unformattable Line:", ex, lev)
+            raise
 
     def dump(self):
         try:

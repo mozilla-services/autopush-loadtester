@@ -1,9 +1,9 @@
-import os
 import sys
 import unittest
 import io
 import json
 import time
+import tempfile
 
 from twisted.logger import (
     formatEventAsClassicLogText
@@ -13,7 +13,6 @@ from twisted.logger._stdlib import StringifiableFromEvent
 from aplt.logobserver import (
     AP_Logger,
     LogLevel
-
 )
 
 
@@ -24,7 +23,7 @@ class TestLogger(unittest.TestCase):
         assert obj._output == sys.stdout
         assert obj.format_event == obj.json_format
 
-        filename = os.tempnam()
+        filename = tempfile.NamedTemporaryFile().name
         fobj = AP_Logger("test", log_format="human",
                          log_output=filename)
         fobj.start()
