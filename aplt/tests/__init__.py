@@ -259,6 +259,9 @@ class TestIntegration(unittest.TestCase):
     def test_exception_restart(self):
         import aplt.runner as runner
         import aplt.scenarios as scenarios
+        # give the client time to finish disconnecting.
+        import time
+        time.sleep(1)
         scenarios._RESTARTS = 0
         h = runner.run_scenario([
             "--log_output=none",
