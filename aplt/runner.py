@@ -122,14 +122,18 @@ class RunnerHarness(object):
         self._connect_waiters.append(processor)
         connectWS(self._factory, contextFactory=self._factory_context)
 
-    def send_notification(self, processor, url, data, ttl, claims=None):
+    def send_notification(self, processor, url, data, headers=None,
+                          claims=None):
         """Send out a notification to a url for a processor
 
         This uses the older `aesgcm` format.
 
         """
+        if not headers:
+            headers = {}
         url = url.encode("utf-8")
-        headers = {"TTL": str(ttl)}
+        if "TTL" not in headers:
+            headers["TTL"] = "0"
         crypto_key = self._crypto_key
         if claims is None:
             claims = ()

@@ -34,12 +34,12 @@ class unregister(namedtuple("UnRegister", "channel_id")):
 
 
 class send_notification(namedtuple("SendNotification",
-                                   "endpoint_url data ttl claims")):
+                                   "endpoint_url data headers claims")):
     pass
 
 
 # set defaults so that we can have the claims be optional.
-send_notification.__new__.__defaults__ = (None, None, 0, None)
+send_notification.__new__.__defaults__ = (None, None, None, None)
 
 
 class expect_notification(namedtuple("ExpectNotification", "channel_id time")):
