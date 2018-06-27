@@ -57,8 +57,8 @@ def basic(*args, **kwargs):
     response, content = yield send_notification(
         endpoint_url=endpoint,
         data=base64.urlsafe_b64decode(data),
-        ttl=60,
-        claims=sc_kw.get('vapid_claims')
+        claims=sc_kw.get('vapid_claims'),
+        headers={"TTL": "60"}
     )
     # response is a standard Requests response object containing
     #   code    HTTP response code
@@ -84,6 +84,95 @@ def basic(*args, **kwargs):
     # we can't actually test if it worked. What the system does, however, is
     # send the data untouched.
     assert notif['data'].encode() == data, "Did not get back expected data"
+
+    yield counter("notification.received", 1)
+    yield timer_end("update.latency")
+    log.msg("Got notif: ", notif)
+
+    # tell the server we got the message.
+    yield ack(channel_id=notif["channelID"], version=notif["version"])
+    yield counter("notification.ack", 1)
+
+    # drop the channelID
+    yield unregister(reg["channelID"])
+
+    # drop the connection
+    yield disconnect()
+
+
+def basic_topic(*args, **kwargs):
+    """Connects, sends a notification, than disconnects"""
+
+    sc_args, sc_kw = group_kw_args(*args)
+    sc_kw.update(kwargs)
+    topic_name = "aaaa"
+
+    # open up the connection
+    yield connect()
+    response = yield hello(None)
+
+    uaid = response['uaid']
+
+    # for a restricted channel, you would need to send the public key
+    reg, endpoint = yield register(random_channel_id(),
+                                   sc_kw.get("vapid_key"))
+    yield timer_start("update.latency")
+
+    # Remember to disconnect! Messages are only overwritten if they're not
+    # delivered!
+    yield disconnect()
+
+    # data is padded out to a length that is a multiple of 4
+    data = "aLongStringOfEncryptedThings"
+    # Send a request using minimal VAPID information as the `claims` arg.
+    # This will automatically set the VAPID `aud` element from the endpoint.
+    response, content = yield send_notification(
+        endpoint_url=endpoint,
+        data=base64.urlsafe_b64decode(data),
+        headers={"TTL": "60",
+                 "Topic": topic_name},
+        claims=sc_kw.get('vapid_claims')
+    )
+    # response is a standard Requests response object containing
+    #   code    HTTP response code
+    #   headers dictionary of returned header keys and values
+    #   length  length of the response body
+    #   json()  response body (returned as JSON)
+    #   text()  response body (returned as text)
+    #   request Requesting object
+    # content is the response body as text.
+    assert response.code == 201, ("Did not get a proper response code. "
+                                  "Expected 201; Got {}".format(response.code))
+    assert content == '', "Response content wasn't empty"
+    yield counter("notification.sent", 1)
+    # Send a second request with the same topic. This should overwrite the
+    # prior.
+    data2 = "aDiffferentStringFullOfStuff"
+    response, content = yield send_notification(
+        endpoint_url=endpoint,
+        data=base64.urlsafe_b64decode(data2),
+        headers={"TTL": "60",
+                 "Topic": topic_name},
+        claims=sc_kw.get('vapid_claims')
+    )
+    assert response.code == 201, ("Did not get a proper response code. "
+                                  "Expected 201; Got {}".format(response.code))
+    assert content == '', "Response content wasn't empty"
+    yield counter("notification.sent", 1)
+
+    yield connect()
+    response = yield hello(uaid)
+    assert response["uaid"] == uaid
+
+    # expect a registration message for the `channelID` in `time` seconds
+    notif = yield expect_notification(
+        channel_id=reg["channelID"],
+        time=5
+    )
+
+    # Check that the returned notification contains the second data
+    # we sent.
+    assert notif['data'].encode() == data2, "Did not get back expected data"
 
     yield counter("notification.received", 1)
     yield timer_end("update.latency")
@@ -128,7 +217,8 @@ def reconnect_forever(reconnect_delay=30, run_once=0):
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
         yield timer_start("update.latency")
-        response, content = yield send_notification(endpoint, data, 60)
+        response, content = yield send_notification(endpoint, data,
+                                                    headers={"TTL": "60"})
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
         notif = yield expect_notification(reg["channelID"], 5)
@@ -188,7 +278,8 @@ def notification_forever(notif_delay=30, run_once=0, vapid_claims=None):
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
         yield timer_start("update.latency")
-        response, content = yield send_notification(endpoint, data, 60,
+        response, content = yield send_notification(endpoint, data,
+                                                    headers={"TTL": "60"},
                                                     claims=vapid_claims)
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
@@ -225,7 +316,11 @@ def notification_forever_stored(qty_stored=32, ttl=300, notif_delay=30,
         length, data = random_data(min_length=2048, max_length=4096)
 
         for i in range(qty_stored):
-            response, content = yield send_notification(endpoint, data, ttl)
+            response, content = yield send_notification(
+                endpoint,
+                data,
+                headers={"TTL": str(ttl)}
+            )
             yield counter("notification.throughput.bytes", length)
             yield counter("notification.sent", 1)
 
@@ -279,7 +374,11 @@ def notification_forever_direct_store(cycle_delay=10, run_once=0):
 
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
-        response, content = yield send_notification(endpoint, data, ttl)
+        response, content = yield send_notification(
+            endpoint,
+            data,
+            headers={"TTL": str(ttl)}
+        )
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
         notif = yield expect_notification(reg["channelID"], 2)
@@ -318,7 +417,8 @@ def notification_forever_unsubscribed(notif_delay=30, run_once=0):
     while True:
         length, data = random_data(min_length=2048, max_length=4096)
         yield timer_start("update.latency")
-        response, content = yield send_notification(endpoint, data, 60)
+        response, content = yield send_notification(endpoint, data,
+                                                    headers={"TTL": "60"})
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
         notif = yield expect_notification(reg["channelID"], 5)
@@ -351,7 +451,8 @@ def notification_forever_bad_tokens(notif_delay=30, run_once=0,
     while True:
         endpoint = bad_push_endpoint(endpoint, token_length)
         length, data = random_data(min_length=2048, max_length=4096)
-        response, content = yield send_notification(endpoint, data, 60)
+        response, content = yield send_notification(endpoint, data,
+                                                    headers={"TTL": "60"})
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
 
@@ -373,7 +474,8 @@ def notification_forever_bad_endpoints(notif_delay=30, run_once=0):
     while True:
         endpoint = bad_push_endpoint()
         length, data = random_data(min_length=2048, max_length=4096)
-        response, content = yield send_notification(endpoint, data, 60)
+        response, content = yield send_notification(endpoint, data,
+                                                    headers={"TTL": "60"})
         yield counter("notification.throughput.bytes", length)
         yield counter("notification.sent", 1)
 
@@ -498,7 +600,7 @@ def _expect_notifications():
     chan_regs = []
     for chan in [random_channel_id() for _ in range(10)]:
         reg, endpoint = yield register(chan)
-        yield send_notification(endpoint, None, 60)
+        yield send_notification(endpoint, None, headers={"TTL": "60"})
         # Server may reformat the channel id, use that one
         chan_regs.append(reg["channelID"])
     shuffle(chan_regs)
