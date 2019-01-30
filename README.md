@@ -53,12 +53,12 @@ Install the `ap-loadtester` package:
 
 Run the basic scenario against the dev server:
 
-    $ aplt_scenario wss://autopush.dev.mozaws.net/ aplt.scenarios:basic
+    $ aplt_scenario aplt.scenarios:basic wss://autopush.dev.mozaws.net/ 
 
 Run 5 instances of the basic scenario, starting one every second, against the
 dev server:
 
-    $ aplt_testplan wss://autopush.dev.mozaws.net/ "aplt.scenarios:basic,5,1,0"
+    $ aplt_testplan "aplt.scenarios:basic,5,1,0" wss://autopush.dev.mozaws.net/ 
 
 Either of these scripts can be run with `-h` for full help documentation.
 
