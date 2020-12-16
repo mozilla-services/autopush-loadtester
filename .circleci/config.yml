@@ -35,7 +35,7 @@ jobs:
             pip install tox flake8
       - run:
           name: flake8
-          environment: |
+          command: |
             flake8 aplt
       - run:
           name: run tests & coverage
