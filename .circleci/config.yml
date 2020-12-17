@@ -33,16 +33,17 @@ jobs:
             apt update
             apt install -y pypy-dev
             pip install tox flake8
-      - run:
-          name: flake8
-          command: |
-            flake8 aplt
+      #- run:
+      #    name: flake8
+      #    command: |
+      #       flake8 aplt
       - run:
           name: run tests & coverage
           environment:
-            TOXENV=pypy CODECOV=true
+            TOXENV: pypy
+            CODECOV: true
           command: |
-              tox -e ALL --with-coverage --cover-xml --cover-package=aplt
+              tox -e ALL
 
 workflows:
   version: 2

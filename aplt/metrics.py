@@ -76,7 +76,7 @@ class DatadogMetrics(object):
         datadog.initialize(api_key=api_key, app_key=app_key)
         self._client = ThreadStats()
         self._flush_interval = flush_interval
-        self._host = get_hostname()
+        self._host = get_hostname(False)
         self._namespace = namespace
 
     def _prefix_name(self, name):

@@ -48,7 +48,7 @@ class TwistedMetricsTestCase(unittest.TestCase):
 class DatadogMetricsTestCase(unittest.TestCase):
     @patch("aplt.metrics.datadog")
     def test_basic(self, mock_dog):
-        hostname = get_hostname()
+        hostname = get_hostname(False)
 
         m = DatadogMetrics("someapikey", "someappkey", namespace="testpush")
         ok_(len(mock_dog.mock_calls) > 0)
