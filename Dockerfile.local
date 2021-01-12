@@ -1,0 +1,50 @@
+# Mozilla AutoPush Load-Tester
+
+# Local loadtesting Docker
+#
+# This installs `wsdump.py` to test for websocket connectivity.
+# see https://pypi.org/project/websocket_client/ for details
+#
+# ## Building:
+# `docker build -f Dockerfile.local -t loadtester:test`
+#
+# ## Running
+# where CMD = whatever test scenario you wish to run (e.g. `basic`)
+# `docker run --net=host loadtester:test $CMD`
+#
+# In addition, you can start a shell into the docker using
+# `docker run --net=host --entrypoint /bin/bash --it loadtester:test`
+#
+# the load test apps are in `./appenv/bin/`
+# e.g. `./appenv/bin/aplt_scenario basic`
+#
+# ## Debugging
+# You can test for network connectviity using
+# `wsdump.py ws://localhost:8080` and sending a "hello" of
+# `{"messageType": "hello", "use_webpush": true, "channelIDs":[]}`
+#
+# this should return a valid connection info block.
+
+FROM pypy:2-7-slim
+
+RUN mkdir -p /app
+WORKDIR /app
+ADD . /app
+
+RUN \
+    BUILD_DEPS="git build-essential" && \
+    # wget not required but nice to have
+    RUN_DEPS="wget libssl-dev" && \
+    apt-get update && \
+    apt-get install -yq --no-install-recommends ${BUILD_DEPS} ${RUN_DEPS} && \
+    pip install virtualenv websocket_client && \
+    virtualenv -p `which pypy` apenv && \
+    ./apenv/bin/pip install pyasn1 && \
+    ./apenv/bin/pip install -r requirements.txt -e . && \
+    apt-get purge -yq --auto-remove ${BUILD_DEPS} && \
+    apt-get autoremove -qq && \
+    apt-get clean -y
+# End run
+
+ENTRYPOINT ["./apenv/bin/aplt_scenario"]
+CMD ["basic"]
