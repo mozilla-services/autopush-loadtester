@@ -6,19 +6,22 @@ The Autopush Load-Tester is an integrated API and load-tester for the Mozilla
 Services autopush project. It's intented to verify proper functioning of
 autopush deployments under various load conditions.
 
-## Supported Platforms 
+Please note, that this application is not installable via PIP or any other
+python installation application or process.
 
-`ap-loadtester` should run on most Linux distro(s).  Though we provide some 
+## Supported Platforms
+
+This application should run on most Linux distro(s).  Though we provide some
 notes for OSX users (see below), please note that we only support usage
 of this tool on Linux. 
 
 ## Getting Started
 
-`ap-loadtester` uses PyPy 5.3.1 which can be downloaded here:
+This application uses PyPy 5.3.1 which can be downloaded here:
 http://pypy.org/download.html
 
 You will also need virtualenv installed on your system to setup a virtualenv for
-`ap-loadtester`. Assuming you have virtualenv and have downloaded pypy, you
+this application. Assuming you have virtualenv and have downloaded pypy, you
 could then setup the loadtester for use with the following commands:
 
 **Linux:**
@@ -40,30 +43,26 @@ The last two commands activate the virtualenv so that running python or pip on
 the shell will run the virtualenv pypy, and upgrade the installed pip to the
 latest version.
 
-You can now either install `ap-loadtester` as a [program](#program-use) to run
-test scenarios you create, or if adding scenarios/code to `ap-loadtester`
+You can run this program as a [program](#program-use) to run
+test scenarios you create, or if adding scenarios/code to this application
 continue to [Developing](#developing).
 
 
 ## Program Use
 
-Install the `ap-loadtester` package:
-
-    $ pip install ap-loadtester
-
 Run the basic scenario against the dev server:
 
-    $ aplt_scenario aplt.scenarios:basic wss://autopush.dev.mozaws.net/ 
+    $ aplt_scenario aplt.scenarios:basic wss://autopush.dev.mozaws.net/
 
 Run 5 instances of the basic scenario, starting one every second, against the
 dev server:
 
-    $ aplt_testplan "aplt.scenarios:basic,5,1,0" wss://autopush.dev.mozaws.net/ 
+    $ aplt_testplan "aplt.scenarios:basic,5,1,0" wss://autopush.dev.mozaws.net/
 
 Either of these scripts can be run with `-h` for full help documentation.
 
 See [SCENARIOS](SCENARIOS.md) for guidance on writing a scenario function for
-use with `ap-loadtester`.
+use with this application.
 
 ## Developing
 

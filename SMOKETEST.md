@@ -1,6 +1,6 @@
-# Using ap-loadtester as a Smoke Test system
+# Using this application as a Smoke Test system
 
-`ap-loadtester` provides a fairly comprehensive set of funcitons and
+This application provides a fairly comprehensive set of funcitons and
 scripts which are well suited to exercise much of [`autopush`](https://github.com/mozilla-services/autopush). It makes
 some sense to use that same rich environment to run simple smoketests
 to esure that basic functions are being performed.
