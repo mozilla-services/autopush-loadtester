@@ -1,0 +1,55 @@
+# These environment variables must be set in CircleCI UI
+#
+# DOCKERHUB_REPO - docker hub repo, format: <username>/<repo>
+# DOCKER_USER    - login info for docker hub
+# DOCKER_PASS
+#
+version: 2.1
+defaults:
+  docker_login: &docker_login
+      run:
+          name: Login to Dockerhub
+          command: |
+              if [ "${DOCKER_USER}" == "" ] || [ "${DOCKER_PASS}" == "" ]; then
+                  echo "Skipping Login to Dockerhub, no credentials."
+              else
+                  echo "${DOCKER_PASS}" | docker login -u="${DOCKER_USER}" --password-stdin
+              fi
+jobs:
+  test:
+    docker:
+      - image: pypy:2.7
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
+      # Future TODO: use a local dynamodb
+    working_directory: /app
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Install Docker test dependencies
+          command: |
+            apt update
+            apt install -y pypy-dev
+            pip install tox flake8
+      #- run:
+      #    name: flake8
+      #    command: |
+      #       flake8 aplt
+      - run:
+          name: run tests & coverage
+          environment:
+            TOXENV: pypy
+            CODECOV: true
+          command: |
+              tox -e ALL
+
+workflows:
+  version: 2
+  build-test-deploy:
+    jobs:
+      - test:
+          filters:
+            tags:
+              only: /.*/
